@@ -34,13 +34,13 @@
     <None Include="..\shaders_P4\fwRendering.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="..\shaders_P4\postProcessing.frag">
+    <None Include="..\shaders_P4\pp_points.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="..\shaders_P4\postProcessing.vert">
+    <None Include="..\shaders_P4\pp_points.frag">
       <Filter>shaders</Filter>
     </None>
-    <None Include="..\shaders_P4\shader.geom">
+    <None Include="..\shaders_P4\pp_points.geom">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>

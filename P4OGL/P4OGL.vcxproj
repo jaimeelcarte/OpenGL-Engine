@@ -22,9 +22,9 @@
   <ItemGroup>
     <None Include="..\shaders_P4\fwRendering.frag" />
     <None Include="..\shaders_P4\fwRendering.vert" />
-    <None Include="..\shaders_P4\postProcessing.frag" />
-    <None Include="..\shaders_P4\postProcessing.vert" />
-    <None Include="..\shaders_P4\shader.geom" />
+    <None Include="..\shaders_P4\pp_points.frag" />
+    <None Include="..\shaders_P4\pp_points.vert" />
+    <None Include="..\shaders_P4\pp_points.geom" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectName>P4OGL</ProjectName>

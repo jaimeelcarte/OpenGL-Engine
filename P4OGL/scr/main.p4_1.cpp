@@ -45,6 +45,11 @@ glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 10.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
+//Opciones de post-procesado
+bool postProcessing = true;
+const char* ppShaderOption = "points"; //
+
+
 //Parametros Motion Blur
 bool constantColor = false;
 float alpha = 0.6f;
@@ -158,7 +163,15 @@ int main(int argc, char** argv)
 	initContext(argc, argv);
 	initOGL();
 	initShaderFw("../shaders_P4/fwRendering.vert", "../shaders_P4/fwRendering.frag");
-	initShaderPP("../shaders_P4/postProcessing.vert", "../shaders_P4/shader.geom" ,"../shaders_P4/postProcessing.frag");
+	if (postProcessing) {
+		if (ppShaderOption == "points")
+			initShaderPP("../shaders_P4/pp_points.vert", "../shaders_P4/pp_points.geom", "../shaders_P4/pp_points.frag");
+		else if (ppShaderOption == "normals")
+			initShaderPP("../shaders_P4/pp_normals.vert", "../shaders_P4/pp_normals.geom", "../shaders_P4/pp_normals.frag");
+		else if (ppShaderOption == "wired")
+			initShaderPP("../shaders_P4/pp_wired.vert", "../shaders_P4/pp_wired.geom", "../shaders_P4/pp_wired.frag");
+	}
+	
 
 	loader = objl::Loader();
 	loader.LoadFile("../obj/mono2.obj");
@@ -240,6 +253,10 @@ void destroy()
 
 	glDetachShader(postProccesProgram, postProccesVShader);
 	glDetachShader(postProccesProgram, postProccesFShader);
+	if (postProcessing) {
+		glDetachShader(program, postProccesGShader);
+		glDeleteShader(postProccesGShader);
+	}
 	glDeleteShader(postProccesVShader);
 	glDeleteShader(postProccesFShader);
 	glDeleteProgram(postProccesProgram);
@@ -530,50 +547,54 @@ void renderFunc()
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); //Activo el fbo por defecto (para que se pueda ver por pantalla)
 
-	glUseProgram(postProccesProgram);
+	if (postProcessing) {
+		glUseProgram(postProccesProgram);
 
-	if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
-		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
-			&(modelView[0][0]));
-	if (uModelViewProjMat != -1)
-		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
-			&(modelViewProj[0][0]));
-	if (uNormalMat != -1)
-		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
-			&(normal[0][0]));
-	/*
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
-	
-	//Variable uniform alpha que se envía al shader
-	if (uAlpha != -1)
-		glUniform1f(uAlpha, alpha);
+		if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
+			glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
+				&(modelView[0][0]));
+		if (uModelViewProjMat != -1)
+			glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
+				&(modelViewProj[0][0]));
+		if (uNormalMat != -1)
+			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
+				&(normal[0][0]));
+		/*
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
 
-	glEnable(GL_BLEND);
-	//Control de parámetros 
-	if (constantColor == false)
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //Factor fuente (alfa) y factor destino (1-alfa)
-	glBlendEquation(GL_FUNC_ADD);
-	if (constantColor == true)
-		glBlendFunc(GL_CONSTANT_COLOR, GL_CONSTANT_ALPHA);
-	glBlendColor(red, green, blue, 0.6); //Da mas control que la linea comentada arriba
-	glBlendEquation(GL_FUNC_ADD);
+		//Variable uniform alpha que se envía al shader
+		if (uAlpha != -1)
+			glUniform1f(uAlpha, alpha);
+
+		glEnable(GL_BLEND);
+		//Control de parámetros
+		if (constantColor == false)
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); //Factor fuente (alfa) y factor destino (1-alfa)
+		glBlendEquation(GL_FUNC_ADD);
+		if (constantColor == true)
+			glBlendFunc(GL_CONSTANT_COLOR, GL_CONSTANT_ALPHA);
+		glBlendColor(red, green, blue, 0.6); //Da mas control que la linea comentada arriba
+		glBlendEquation(GL_FUNC_ADD);
 
 
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, colorBuffTexId); //No está cambiando para nada el estado del shader
-	*/
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, colorBuffTexId); //No está cambiando para nada el estado del shader
+		*/
 
-	glPointSize(3.0f);
-	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
-		GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
-	/*
-	glDisable(GL_BLEND);
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
-	*/
+		glPointSize(5.0f);
+		glBindVertexArray(vao);
+		glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
+			GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
+		/*
+		glDisable(GL_BLEND);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
+		*/
+		
+	}
 	glutSwapBuffers();
+	
 }
 
 void renderCube()
@@ -688,6 +709,11 @@ void keyboardFunc(unsigned char key, int x, int y)
 	else if (key == 's') cameraPos -= cameraSpeed * cameraFront;
 	else if (key == 'a') cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 	else if (key == 'd') cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+	else if (key == 'p' && postProcessing) postProcessing = false;
+	else if (key == 'p' && !postProcessing) postProcessing = true;
+	else if (key == '1') ppShaderOption = "points";
+	else if (key == '2') ppShaderOption = "normals";
+	else if (key == '3') ppShaderOption = "wired";
 
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
