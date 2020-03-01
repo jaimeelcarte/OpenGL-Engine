@@ -1,6 +1,6 @@
 #version 330 core
 layout (triangles) in;
-layout (points, max_vertices = 3) out;
+layout (line_strip, max_vertices = 6) out;
 
 in vData
 {
@@ -20,19 +20,19 @@ out fData
 }frag; 
 
 
-void main() 
-{   
-	for (int i = 0; i < 3; ++i)
-	{
-		frag.color = vertex[i].color;
-		frag.pos = vertex[i].pos;
-		frag.norm = vertex[i].norm;
-		frag.texCoord = vertex[i].texCoord;
-
-		gl_Position = gl_in[i].gl_Position;
-		
-		EmitVertex();
-	}
-	
+void GenerateLine(int a, int b)
+{
+	gl_Position = gl_in[a].gl_Position;
+    EmitVertex();
+    gl_Position = gl_in[b].gl_Position;
+    EmitVertex();
     EndPrimitive();
-}  
+}
+
+void main() {    
+	gl_PointSize = 5.0;
+	frag.color = vec3(1.0, 1.0, 0.0);
+    GenerateLine(0,1);
+	GenerateLine(1,2);
+	GenerateLine(2,0);
+} 

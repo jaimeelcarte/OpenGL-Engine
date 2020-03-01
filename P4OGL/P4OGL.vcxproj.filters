@@ -43,5 +43,23 @@
     <None Include="..\shaders_P4\pp_points.geom">
       <Filter>shaders</Filter>
     </None>
+    <None Include="..\shaders_P4\pp_normals.geom">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_normals.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_wired.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_wired.geom">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_wired.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_normals.frag">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

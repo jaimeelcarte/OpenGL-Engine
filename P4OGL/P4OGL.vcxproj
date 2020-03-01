@@ -22,9 +22,15 @@
   <ItemGroup>
     <None Include="..\shaders_P4\fwRendering.frag" />
     <None Include="..\shaders_P4\fwRendering.vert" />
+    <None Include="..\shaders_P4\pp_normals.frag" />
+    <None Include="..\shaders_P4\pp_normals.geom" />
+    <None Include="..\shaders_P4\pp_normals.vert" />
     <None Include="..\shaders_P4\pp_points.frag" />
     <None Include="..\shaders_P4\pp_points.vert" />
     <None Include="..\shaders_P4\pp_points.geom" />
+    <None Include="..\shaders_P4\pp_wired.frag" />
+    <None Include="..\shaders_P4\pp_wired.geom" />
+    <None Include="..\shaders_P4\pp_wired.vert" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectName>P4OGL</ProjectName>
