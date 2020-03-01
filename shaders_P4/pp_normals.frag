@@ -6,9 +6,9 @@ layout(location = 0) out vec4 outColor;
 //Variables Variantes
 in fData
 {
-	vec3 pos;
+	vec4 pos;
     vec3 color;
-	vec3 norm;
+	vec4 norm;
 	vec2 texCoord;
 }frag;
 

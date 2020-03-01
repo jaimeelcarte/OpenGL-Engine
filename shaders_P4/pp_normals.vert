@@ -23,7 +23,7 @@ void main()
 
 	vertex.color = vec3(1.0, 1.0, 0.0);
 	vertex.texCoord = inTexCoord;
-	vertex.norm = inNormal;
+	vertex.norm = (normal * vec4(inNormal, 0.0)).xyz;
 	vertex.pos = (modelView * vec4(inPos, 1.0)).xyz;
 	
 	gl_Position =  vec4 (inPos,1.0);
