@@ -47,7 +47,7 @@ glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 //Opciones de post-procesado
 bool postProcessing = true;
-const char* ppShaderOption = "points"; //
+const char* ppShaderOption = "wired"; //
 
 
 //Parametros Motion Blur
