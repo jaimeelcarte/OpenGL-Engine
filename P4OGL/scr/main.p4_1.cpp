@@ -1,6 +1,7 @@
 ﻿#include "BOX.h"
 #include "auxiliar.h"
 #include "PLANE.h"
+#include "TRIANGLE.h"
 #include "OBJ_Loader.h"
 
 #include <gl/glew.h>
@@ -47,6 +48,8 @@ glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 //Opciones de post-procesado
 bool postProcessing = true;
+bool isQuad = false;
+bool usingModel = false;
 const char* ppShaderOption = "normals"; //
 
 
@@ -56,6 +59,9 @@ float alpha = 0.6f;
 float red = 0.5f;
 float green = 0.5f;
 float blue = 0.5f;
+
+//Parametros tessellation
+int nSub = 2;
 
 unsigned int fbo;
 unsigned int colorBuffTexId;
@@ -76,6 +82,8 @@ unsigned int emiTexId;
 
 unsigned int planeVAO;
 unsigned int planeVertexVBO;
+unsigned int triangleVAO;
+unsigned int triangleVertexVBO;
 
 //Por definir
 unsigned int vshader;
@@ -87,6 +95,8 @@ int uModelViewMat;
 int uModelViewProjMat;
 int uNormalMat;
 
+//Tessellation 
+int uNSub;
 
 //Texturas Uniform
 int uColorTex;
@@ -101,6 +111,8 @@ int inTexCoord;
 
 //Post-proceso
 unsigned int postProccesVShader;
+unsigned int postProccesTCS_Shader;
+unsigned int postProccesTES_Shader;
 unsigned int postProccesGShader;
 unsigned int postProccesFShader;
 unsigned int postProccesProgram;
@@ -129,9 +141,12 @@ void renderCube();
 void initContext(int argc, char** argv);
 void initOGL();
 void initShaderFw(const char *vname, const char *fname);
-void initShaderPP(const char *vname, const char *gname, const char *fname);
+void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name, const char *gname, const char *fname);
 void initObj();
+
 void initPlane();
+void initTriangle();
+
 void initFBO();
 void destroy();
 
@@ -165,16 +180,22 @@ int main(int argc, char** argv)
 	initShaderFw("../shaders_P4/fwRendering.vert", "../shaders_P4/fwRendering.frag");
 	if (postProcessing) {
 		if (ppShaderOption == "points")
-			initShaderPP("../shaders_P4/pp_points.vert", "../shaders_P4/pp_points.geom", "../shaders_P4/pp_points.frag");
+			initShaderPP("../shaders_P4/pp_points.vert", "../shaders_P4/pp_triangle.tcs", "../shaders_P4/pp_triangle.tes", "../shaders_P4/pp_points.geom", "../shaders_P4/pp_points.frag");
 		else if (ppShaderOption == "normals")
-			initShaderPP("../shaders_P4/pp_normals.vert", "../shaders_P4/pp_normals.geom", "../shaders_P4/pp_normals.frag");
+			initShaderPP("../shaders_P4/pp_normals.vert", "../shaders_P4/pp_triangle.tcs", "../shaders_P4/pp_triangle.tes", "../shaders_P4/pp_normals.geom", "../shaders_P4/pp_normals.frag");
 		else if (ppShaderOption == "wired")
-			initShaderPP("../shaders_P4/pp_wired.vert", "../shaders_P4/pp_wired.geom", "../shaders_P4/pp_wired.frag");
+		{
+			if (isQuad)
+				initShaderPP("../shaders_P4/pp_wired.vert", "../shaders_P4/pp_quad.tcs", "../shaders_P4/pp_quad.tes", "../shaders_P4/pp_wired.geom", "../shaders_P4/pp_wired.frag");
+			else
+				initShaderPP("../shaders_P4/pp_wired.vert", "../shaders_P4/pp_triangle.tcs", "../shaders_P4/pp_triangle.tes", "../shaders_P4/pp_wired.geom", "../shaders_P4/pp_wired.frag");
+		}
+			
 	}
 	
 
 	loader = objl::Loader();
-	loader.LoadFile("../obj/mono2.obj");
+	loader.LoadFile("../obj/cubeText.obj");
 
 	for (int i = 0; i < loader.LoadedVertices.size(); ++i)
 	{
@@ -186,6 +207,7 @@ int main(int argc, char** argv)
 
 	initObj();
 	initPlane();
+	initTriangle();
 	initFBO();
 	
 	glutMainLoop();
@@ -328,14 +350,18 @@ void initShaderFw(const char *vname, const char *fname)
 	inTexCoord = glGetAttribLocation(program, "inTexCoord");
 }
 
-void initShaderPP(const char *vname, const char *gname, const char *fname)
+void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name, const char *gname, const char *fname)
 {
 	postProccesVShader = loadShader(vname, GL_VERTEX_SHADER);
+	postProccesTCS_Shader = loadShader(tcs_name, GL_TESS_CONTROL_SHADER);
+	postProccesTES_Shader = loadShader(tes_name, GL_TESS_EVALUATION_SHADER);
 	postProccesGShader = loadShader(gname, GL_GEOMETRY_SHADER);
 	postProccesFShader = loadShader(fname, GL_FRAGMENT_SHADER);
 
 	postProccesProgram = glCreateProgram();
 	glAttachShader(postProccesProgram, postProccesVShader);
+	glAttachShader(postProccesProgram, postProccesTCS_Shader);
+	glAttachShader(postProccesProgram, postProccesTES_Shader);
 	glAttachShader(postProccesProgram, postProccesGShader);
 	glAttachShader(postProccesProgram, postProccesFShader);
 	glBindAttribLocation(postProccesProgram, 0, "inPos"); 
@@ -356,8 +382,11 @@ void initShaderPP(const char *vname, const char *gname, const char *fname)
 		exit(-1);
 	}
 	uColorTexPP = glGetUniformLocation(postProccesProgram, "colorTex");
-	inPosPP = glGetAttribLocation(postProccesProgram, "inPos");
+	uNSub = glGetUniformLocation(postProccesProgram, "nSub");
 	uAlpha = glGetUniformLocation(postProccesProgram, "alpha");
+
+	inPosPP = glGetAttribLocation(postProccesProgram, "inPos");
+
 	glUseProgram(postProccesProgram);
 	if (uColorTexPP != -1)
 		glUniform1i(uColorTexPP, 0);
@@ -435,6 +464,22 @@ void initPlane()
 		planeVertexPos, GL_STATIC_DRAW); //Reserva memoria de la tarjeta gráfica y subo datos relativos al plano
 	glVertexAttribPointer(inPosPP, 3, GL_FLOAT, GL_FALSE, 0, 0); //Le dije a que atributo asignar las posiciones del vertice
 	glEnableVertexAttribArray(inPosPP); 
+
+}
+
+void initTriangle()
+{
+
+	glGenVertexArrays(1, &triangleVAO);
+	glBindVertexArray(triangleVAO);
+
+	glGenBuffers(1, &triangleVertexVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, triangleVertexVBO);
+
+	glBufferData(GL_ARRAY_BUFFER, triangleNVertex * sizeof(float) * 3,
+		triangleVertexPos, GL_STATIC_DRAW); //Reserva memoria de la tarjeta gráfica y subo datos relativos al plano
+	glVertexAttribPointer(inPosPP, 3, GL_FLOAT, GL_FALSE, 0, 0); //Le dije a que atributo asignar las posiciones del vertice
+	glEnableVertexAttribArray(inPosPP);
 
 }
 
@@ -540,11 +585,14 @@ void renderFunc()
 		glUniform1i(uEmiTex, 1);
 	}
 
-
-	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
-		GL_UNSIGNED_INT, (void*)0);
-
+	if (usingModel)
+	{
+		glBindVertexArray(vao);
+		glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
+			GL_UNSIGNED_INT, (void*)0);
+	}
+	
+	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); //Activo el fbo por defecto (para que se pueda ver por pantalla)
 
 	if (postProcessing) {
@@ -559,6 +607,8 @@ void renderFunc()
 		if (uNormalMat != -1)
 			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 				&(normal[0][0]));
+		if (uNSub != -1)
+			glUniform1i(uNSub, nSub);
 		/*
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
@@ -581,11 +631,49 @@ void renderFunc()
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, colorBuffTexId); //No está cambiando para nada el estado del shader
 		*/
+		
+		
 
-		glPointSize(5.0f);
-		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
-			GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
+		
+
+		//Prueba con el quad
+		
+		if (isQuad)
+		{
+
+			glPatchParameteri(GL_PATCH_VERTICES, 4); //Definimos el numero de patch
+
+			if (usingModel)
+			{
+				glPointSize(5.0f);
+				glBindVertexArray(vao);
+				glDrawElements(GL_PATCHES, loader.LoadedIndices.size() * 3,
+					GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
+			}
+			else 
+			{
+				glBindVertexArray(planeVAO);
+				glDrawArrays(GL_PATCHES, 0, 4); //Es necesario utilizar la topología patch
+			}
+		}
+		else
+		{
+			glPatchParameteri(GL_PATCH_VERTICES, 3); //Definimos el numero de patch
+			if (usingModel)
+			{
+				glPointSize(5.0f);
+				glBindVertexArray(vao);
+				glDrawElements(GL_PATCHES, loader.LoadedIndices.size() * 3,
+					GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
+			}
+			else
+			{
+				glBindVertexArray(triangleVAO);
+				glDrawArrays(GL_PATCHES, 0, 3); //Es necesario utilizar la topología patch
+			}
+		}
+		
+
 		/*
 		glDisable(GL_BLEND);
 		glEnable(GL_CULL_FACE);
@@ -714,7 +802,8 @@ void keyboardFunc(unsigned char key, int x, int y)
 	else if (key == '1') ppShaderOption = "points";
 	else if (key == '2') ppShaderOption = "normals";
 	else if (key == '3') ppShaderOption = "wired";
-
+	else if (key == '+') nSub++;
+	else if (key == '-') nSub--;
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
 void mouseFunc(int button, int state, int x, int y){}
