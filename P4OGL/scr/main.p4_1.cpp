@@ -136,6 +136,7 @@ void keyboardFunc(unsigned char key, int x, int y);
 void mouseFunc(int button, int state, int x, int y);
 
 void renderCube();
+void renderTeapot();
 
 //Funciones de inicialización y destrucción
 void initContext(int argc, char** argv);
@@ -195,7 +196,7 @@ int main(int argc, char** argv)
 	
 
 	loader = objl::Loader();
-	loader.LoadFile("../obj/cubeText.obj");
+	loader.LoadFile("../obj/teapot2.obj");
 
 	for (int i = 0; i < loader.LoadedVertices.size(); ++i)
 	{
@@ -244,7 +245,8 @@ void initContext(int argc, char** argv)
 	std::cout << "This system supports OpenGL Version: " << oglVersion << std::endl;
 
 	glutReshapeFunc(resizeFunc);
-	glutDisplayFunc(renderFunc);
+	//glutDisplayFunc(renderFunc);
+	glutDisplayFunc(renderTeapot);
 	glutIdleFunc(idleFunc);
 	glutKeyboardFunc(keyboardFunc);
 	glutMouseFunc(mouseFunc);
@@ -448,7 +450,7 @@ void initObj()
 
 	model = glm::mat4(1.0f);
 
-	colorTexId = loadTex("../img/color2.png");
+	colorTexId = loadTex("../img/mapamundi.jpg");
 	emiTexId = loadTex("../img/emissive.png");
 }
 
@@ -539,15 +541,15 @@ unsigned int loadTex(const char *fileName)
 	delete[] map;
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-		GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+	//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 
 	return texId;
 }
-
 void renderFunc()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); //Primero lo activo y luego lo limpio
@@ -683,6 +685,43 @@ void renderFunc()
 	}
 	glutSwapBuffers();
 	
+}
+
+void renderTeapot()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0); //Primero lo activo y luego lo limpio
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	/**/
+	glUseProgram(program);
+
+	glm::mat4 modelView = view * model;
+	glm::mat4 modelViewProj = proj * view * model;
+	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+	if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
+		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
+			&(modelView[0][0]));
+	if (uModelViewProjMat != -1)
+		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
+			&(modelViewProj[0][0]));
+	if (uNormalMat != -1)
+		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
+			&(normal[0][0]));
+
+	//Texturas
+	if (uColorTex != -1)
+	{
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, colorTexId);
+		glUniform1i(uColorTex, 0); //No tiene que ver con la textura, sino con el shader
+	}
+
+	glBindVertexArray(vao);
+	glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
+		GL_UNSIGNED_INT, (void*)0);
+
+	glutSwapBuffers();
+
 }
 
 void renderCube()
