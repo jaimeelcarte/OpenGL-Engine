@@ -23,6 +23,10 @@
   <ItemGroup>
     <None Include="..\shaders_P4\fwRendering.frag" />
     <None Include="..\shaders_P4\fwRendering.vert" />
+    <None Include="..\shaders_P4\pp_map.frag" />
+    <None Include="..\shaders_P4\pp_map.tcs" />
+    <None Include="..\shaders_P4\pp_map.tes" />
+    <None Include="..\shaders_P4\pp_map.vert" />
     <None Include="..\shaders_P4\pp_normals.frag" />
     <None Include="..\shaders_P4\pp_normals.geom" />
     <None Include="..\shaders_P4\pp_normals.vert" />
@@ -31,6 +35,7 @@
     <None Include="..\shaders_P4\pp_points.geom" />
     <None Include="..\shaders_P4\pp_quad.tcs" />
     <None Include="..\shaders_P4\pp_quad.tes" />
+    <None Include="..\shaders_P4\pp_map.geom" />
     <None Include="..\shaders_P4\pp_triangle.tcs" />
     <None Include="..\shaders_P4\pp_triangle.tes" />
     <None Include="..\shaders_P4\pp_wired.frag" />

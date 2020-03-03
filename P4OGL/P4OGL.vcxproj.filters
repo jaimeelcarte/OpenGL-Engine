@@ -76,5 +76,20 @@
     <None Include="..\shaders_P4\pp_triangle.tes">
       <Filter>shaders</Filter>
     </None>
+    <None Include="..\shaders_P4\pp_map.geom">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_map.tes">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_map.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_map.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_map.tcs">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

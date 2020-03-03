@@ -49,8 +49,8 @@ glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 //Opciones de post-procesado
 bool postProcessing = true;
 bool isQuad = false;
-bool usingModel = false;
-const char* ppShaderOption = "normals"; //
+bool usingModel = true;
+const char* ppShaderOption = "map"; //
 
 
 //Parametros Motion Blur
@@ -191,6 +191,8 @@ int main(int argc, char** argv)
 			else
 				initShaderPP("../shaders_P4/pp_wired.vert", "../shaders_P4/pp_triangle.tcs", "../shaders_P4/pp_triangle.tes", "../shaders_P4/pp_wired.geom", "../shaders_P4/pp_wired.frag");
 		}
+		else if(ppShaderOption == "map")
+			initShaderPP("../shaders_P4/pp_map.vert", "../shaders_P4/pp_map.tcs", "../shaders_P4/pp_map.tes", "../shaders_P4/pp_map.geom", "../shaders_P4/pp_map.frag");
 			
 	}
 	
@@ -245,8 +247,10 @@ void initContext(int argc, char** argv)
 	std::cout << "This system supports OpenGL Version: " << oglVersion << std::endl;
 
 	glutReshapeFunc(resizeFunc);
-	//glutDisplayFunc(renderFunc);
-	glutDisplayFunc(renderTeapot);
+	if(ppShaderOption == "map")
+		glutDisplayFunc(renderTeapot);
+	else
+		glutDisplayFunc(renderFunc);
 	glutIdleFunc(idleFunc);
 	glutKeyboardFunc(keyboardFunc);
 	glutMouseFunc(mouseFunc);
@@ -366,7 +370,12 @@ void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name,
 	glAttachShader(postProccesProgram, postProccesTES_Shader);
 	glAttachShader(postProccesProgram, postProccesGShader);
 	glAttachShader(postProccesProgram, postProccesFShader);
+
 	glBindAttribLocation(postProccesProgram, 0, "inPos"); 
+	glBindAttribLocation(postProccesProgram, 1, "inColor");
+	glBindAttribLocation(postProccesProgram, 2, "inNormal");
+	glBindAttribLocation(postProccesProgram, 3, "inTexCoord");
+
 	glLinkProgram(postProccesProgram);
 	int linked;
 	glGetProgramiv(postProccesProgram, GL_LINK_STATUS, &linked);
@@ -384,16 +393,18 @@ void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name,
 		exit(-1);
 	}
 	uColorTexPP = glGetUniformLocation(postProccesProgram, "colorTex");
+	uEmiTex = glGetUniformLocation(postProccesProgram, "emiTex");
 	uNSub = glGetUniformLocation(postProccesProgram, "nSub");
 	uAlpha = glGetUniformLocation(postProccesProgram, "alpha");
 
 	inPosPP = glGetAttribLocation(postProccesProgram, "inPos");
+	inColor = glGetAttribLocation(postProccesProgram, "inColor");
+	inNormal = glGetAttribLocation(postProccesProgram, "inNormal");
+	inTexCoord = glGetAttribLocation(postProccesProgram, "inTexCoord");
 
 	glUseProgram(postProccesProgram);
 	if (uColorTexPP != -1)
 		glUniform1i(uColorTexPP, 0);
-
-
 }
 
 void initObj()
@@ -689,12 +700,11 @@ void renderFunc()
 
 void renderTeapot()
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, 0); //Primero lo activo y luego lo limpio
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 	/**/
-	glUseProgram(program);
-
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(postProccesProgram);
+	
 	glm::mat4 modelView = view * model;
 	glm::mat4 modelViewProj = proj * view * model;
 	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
@@ -707,6 +717,8 @@ void renderTeapot()
 	if (uNormalMat != -1)
 		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 			&(normal[0][0]));
+	if (uNSub != -1)
+		glUniform1i(uNSub, nSub);
 
 	//Texturas
 	if (uColorTex != -1)
@@ -716,10 +728,19 @@ void renderTeapot()
 		glUniform1i(uColorTex, 0); //No tiene que ver con la textura, sino con el shader
 	}
 
-	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
-		GL_UNSIGNED_INT, (void*)0);
+	if (uEmiTex != -1)
+	{
+		glActiveTexture(GL_TEXTURE0 + 1);
+		glBindTexture(GL_TEXTURE_2D, emiTexId);
+		glUniform1i(uEmiTex, 1);
+	}
 
+	glPatchParameteri(GL_PATCH_VERTICES, 3); //Definimos el numero de patch
+	glPointSize(5.0f);
+	glBindVertexArray(vao);
+	glDrawElements(GL_PATCHES, loader.LoadedIndices.size() * 3,
+		GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
+	
 	glutSwapBuffers();
 
 }
@@ -822,16 +843,19 @@ void keyboardFunc(unsigned char key, int x, int y)
 	float cameraSpeed = 1.0;
 	float cameraRotate = 0.1;
 
-	if (key == 'f')
+	if (key == 'j')
 	{
 		angulo = (angulo < 6.2830f) ? angulo + cameraRotate : 0.0f; //? true:false
 		cameraFront = glm::rotate(cameraFront, angulo, glm::vec3(0.0f, 1.0f, 0.0f));
 	}
-	else if (key == 'g')
+	else if (key == 'l')
 	{
 		angulo = (angulo < 6.2830f) ? angulo - cameraRotate : 0.0f;
 		cameraFront = glm::rotate(cameraFront, angulo, glm::vec3(0.0f, 1.0f, 0.0f));
 	}
+	
+	else if (key == 'm') cameraPos += cameraSpeed * cameraUp;
+	else if (key == 'n') cameraPos -= cameraSpeed * cameraUp;
 	else if (key == 'w') cameraPos += cameraSpeed * cameraFront;
 	else if (key == 's') cameraPos -= cameraSpeed * cameraFront;
 	else if (key == 'a') cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
