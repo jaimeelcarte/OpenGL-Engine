@@ -97,6 +97,7 @@ int uNormalMat;
 
 //Tessellation 
 int uNSub;
+int uCameraPos;
 
 //Texturas Uniform
 int uColorTex;
@@ -396,6 +397,7 @@ void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name,
 	uEmiTex = glGetUniformLocation(postProccesProgram, "emiTex");
 	uNSub = glGetUniformLocation(postProccesProgram, "nSub");
 	uAlpha = glGetUniformLocation(postProccesProgram, "alpha");
+	uCameraPos = glGetUniformLocation(postProccesProgram, "cameraPos");
 
 	inPosPP = glGetAttribLocation(postProccesProgram, "inPos");
 	inColor = glGetAttribLocation(postProccesProgram, "inColor");
@@ -622,6 +624,7 @@ void renderFunc()
 				&(normal[0][0]));
 		if (uNSub != -1)
 			glUniform1i(uNSub, nSub);
+		
 		/*
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
@@ -719,6 +722,8 @@ void renderTeapot()
 			&(normal[0][0]));
 	if (uNSub != -1)
 		glUniform1i(uNSub, nSub);
+	if (uCameraPos != -1)
+		glUniform3fv(uCameraPos, 1, &(cameraPos[0]));
 
 	//Texturas
 	if (uColorTex != -1)
@@ -735,11 +740,13 @@ void renderTeapot()
 		glUniform1i(uEmiTex, 1);
 	}
 
+	// Dynamic LODs
+
 	glPatchParameteri(GL_PATCH_VERTICES, 3); //Definimos el numero de patch
 	glPointSize(5.0f);
 	glBindVertexArray(vao);
 	glDrawElements(GL_PATCHES, loader.LoadedIndices.size() * 3,
-		GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
+		GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 3 vertices
 	
 	glutSwapBuffers();
 
