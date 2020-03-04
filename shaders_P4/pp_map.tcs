@@ -18,7 +18,7 @@ out tesData
 	vec2 texCoord;
 }tes[];
 
-uniform int nSub;
+//uniform int nSub;
 uniform vec3 cameraPos;
 
 float getTessLevel(float Distance0, float Distance1);
@@ -30,16 +30,14 @@ void main()
 	tes[gl_InvocationID].norm = vertex[gl_InvocationID].norm;
 	tes[gl_InvocationID].texCoord = vertex[gl_InvocationID].texCoord;
 
-	gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
-
 	// Need to compute Distance from camera to vertex
 	float Distance0 = distance(cameraPos, tes[0].pos);
 	float Distance1 = distance(cameraPos, tes[1].pos);
 	float Distance2 = distance(cameraPos, tes[2].pos);
 
-	//gl_TessLevelOuter[0] = 3.0;
-	//gl_TessLevelOuter[1] = 3.0;
-	//gl_TessLevelOuter[2] = 3.0;
+	//gl_TessLevelOuter[0] = nSub;
+	//gl_TessLevelOuter[1] = nSub;
+	//gl_TessLevelOuter[2] = nSub;
 
 	gl_TessLevelOuter[0] = getTessLevel(Distance1, Distance2);
 	gl_TessLevelOuter[1] = getTessLevel(Distance2, Distance0);

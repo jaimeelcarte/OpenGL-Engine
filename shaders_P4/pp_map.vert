@@ -8,6 +8,7 @@ in vec3 inNormal;
 uniform mat4 modelViewProj;
 uniform mat4 modelView;
 uniform mat4 normal;
+uniform sampler2D colorTex;
 
 out vData
 {
@@ -20,12 +21,11 @@ out vData
 
 void main()
 {
-
 	vertex.color = vec3(1.0, 1.0, 0.0);
+//	vertex.color = texture(colorTex, vertex.texCoord).xyz;
 	vertex.texCoord = inTexCoord;
 	vertex.norm = (normal * vec4(inNormal, 0.0)).xyz;
 	vertex.pos = (modelView * vec4(inPos, 1.0)).xyz;
 
 	gl_Position =  modelViewProj * vec4 (inPos,1.0);
-	
 }

@@ -266,7 +266,7 @@ void initOGL()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
 
-	proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, 50.0f);
+	proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, 100.0f);
 	view = glm::mat4(1.0f);
 	view[3].z = -25.0f;
 }
@@ -284,7 +284,11 @@ void destroy()
 	glDetachShader(postProccesProgram, postProccesFShader);
 	if (postProcessing) {
 		glDetachShader(program, postProccesGShader);
+		glDetachShader(program, postProccesTCS_Shader);
+		glDetachShader(program, postProccesTES_Shader);
 		glDeleteShader(postProccesGShader);
+		glDeleteShader(postProccesTCS_Shader);
+		glDeleteShader(postProccesTES_Shader);
 	}
 	glDeleteShader(postProccesVShader);
 	glDeleteShader(postProccesFShader);

@@ -10,8 +10,6 @@ in vData
 	vec2 texCoord;
 }vertex[];
 
-uniform mat4 modelViewProj;
-uniform sampler2D colorTex;
 
 out fData
 {
@@ -21,20 +19,15 @@ out fData
 	vec2 texCoord;
 }frag; 
 
-void main() {  
-	
-	vec4 textureColor;
-	float displacementFactor = 1.0;
 
+void main() {   
 	for (int i=0; i<3; i++){
-		textureColor = texture(colorTex, vertex[i].texCoord);
 		frag.pos = vertex[i].pos;
-		frag.color = textureColor.rgb;
+		frag.color = vertex[i].color;
 		frag.norm = vertex[i].norm;
 		frag.texCoord = vertex[i].texCoord;
-		gl_Position = gl_in[i].gl_Position + textureColor * displacementFactor;
-		//gl_Position = gl_in[i].gl_Position;
+		gl_Position = gl_in[i].gl_Position;
 		EmitVertex();
 	}
     EndPrimitive();
-} 
+}  
