@@ -715,6 +715,8 @@ void renderTeapot()
 {
 	/**/
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(postProccesProgram);
 	
@@ -757,6 +759,8 @@ void renderTeapot()
 		glBindTexture(GL_TEXTURE_2D, emiTexId);
 		glUniform1i(uEmiTex, 1);
 	}
+
+	
 
 	// Dynamic LODs
 
