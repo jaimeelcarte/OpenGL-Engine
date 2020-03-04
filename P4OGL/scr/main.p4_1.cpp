@@ -50,7 +50,7 @@ glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 bool postProcessing = true;
 bool isQuad = false;
 bool usingModel = true;
-const char* ppShaderOption = "wired"; //
+const char* ppShaderOption = "map"; //
 
 
 //Parametros Motion Blur
@@ -61,7 +61,8 @@ float green = 0.5f;
 float blue = 0.5f;
 
 //Parametros tessellation
-float nSub = 0.0f;
+float dispFactor = 0.0f;
+int nSub = 1;
 
 unsigned int fbo;
 unsigned int colorBuffTexId;
@@ -98,6 +99,7 @@ int uModelViewProjMat;
 int uNormalMat;
 
 //Tessellation 
+int uDispFactor;
 int uNSub;
 int uCameraPos;
 
@@ -406,6 +408,7 @@ void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name,
 	uColorTexPP = glGetUniformLocation(postProccesProgram, "colorTex");
 	uEmiTex = glGetUniformLocation(postProccesProgram, "emiTex");
 	uNSub = glGetUniformLocation(postProccesProgram, "nSub");
+	uDispFactor = glGetUniformLocation(postProccesProgram, "dispFactor");
 	uAlpha = glGetUniformLocation(postProccesProgram, "alpha");
 	uCameraPos = glGetUniformLocation(postProccesProgram, "cameraPos");
 
@@ -632,8 +635,10 @@ void renderFunc()
 		if (uNormalMat != -1)
 			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 				&(normal[0][0]));
+		if (uDispFactor != -1)
+			glUniform1f(uDispFactor, dispFactor);
 		if (uNSub != -1)
-			glUniform1f(uNSub, nSub);
+			glUniform1i(uNSub, nSub);
 		
 		/*
 		glDisable(GL_CULL_FACE);
@@ -740,8 +745,10 @@ void renderTeapot()
 	if (uNormalMat != -1)
 		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 			&(normal[0][0]));
+	if (uDispFactor != -1)
+		glUniform1f(uDispFactor, dispFactor);
 	if (uNSub != -1)
-		glUniform1f(uNSub, nSub);
+		glUniform1i(uNSub, nSub);
 	if (uCameraPos != -1)
 		glUniform3fv(uCameraPos, 1, &(camPos[0]));
 
@@ -894,8 +901,11 @@ void keyboardFunc(unsigned char key, int x, int y)
 	else if (key == '1') ppShaderOption = "points";
 	else if (key == '2') ppShaderOption = "normals";
 	else if (key == '3') ppShaderOption = "wired";
-	else if (key == '+') nSub += 0.1f;
-	else if (key == '-') nSub -= 0.1f;
+	else if (ppShaderOption == "map" && key == '+') dispFactor += 0.1f;
+	else if (ppShaderOption == "map" && key == '-') dispFactor -= 0.1f;
+	else if (ppShaderOption != "map" && key == '+') nSub++;
+	else if (ppShaderOption != "map" && key == '-') nSub--;
+	std::cout << dispFactor << std::endl;
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
 void mouseFunc(int button, int state, int x, int y){}

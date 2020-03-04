@@ -4,7 +4,7 @@ layout(triangles, equal_spacing, ccw ) in;
 
 uniform mat4 viewProj;
 uniform sampler2D colorTex;
-uniform float nSub;
+uniform float dispFactor;
 
 in tesData
 {
@@ -42,7 +42,7 @@ void main()
 	vertex.color = texture(colorTex, vertex.texCoord.xy).xyz;
 	
 	float Displacement = texture(colorTex, vertex.texCoord.xy).x;
-	vertex.pos += vertex.norm * Displacement * nSub;
+	vertex.pos += vertex.norm * Displacement * dispFactor;
 	gl_Position = viewProj * vec4(vertex.pos, 1.0);
 }
 
