@@ -22,12 +22,6 @@ void main()
 	texCoord = inTexCoord;
 	norm = (normal * vec4(inNormal, 0.0)).xyz;
 	pos = (modelView * vec4(inPos, 1.0)).xyz;
-
-	vec3 textureColor = texture(colorTex, texCoord).rgb;
-	float escalar = textureColor.x * 0.3 + textureColor.y * 0.4 + textureColor.z * 0.3;
-
-	vec4 posNueva = vec4(norm * escalar, 1.0) + vec4(inPos,1.0);
-	//gl_Position =  modelViewProj * vec4 (inPos,1.0);
-	gl_Position = modelViewProj * posNueva;
+	gl_Position =  modelViewProj * vec4 (inPos,1.0);
 
 }

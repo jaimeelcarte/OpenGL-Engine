@@ -42,7 +42,7 @@ std::vector< objl::Vector2 >  texCoords;
 std::vector<unsigned int> indices;
 
 //Ajustes de la camara
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 10.0f);
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 25.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
@@ -50,7 +50,7 @@ glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 bool postProcessing = true;
 bool isQuad = false;
 bool usingModel = true;
-const char* ppShaderOption = "map"; //
+const char* ppShaderOption = "wired"; //
 
 
 //Parametros Motion Blur

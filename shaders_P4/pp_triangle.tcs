@@ -18,7 +18,7 @@ out tesData
 	vec2 texCoord;
 }tes[];
 
-uniform int nSub;
+uniform float nSub;
 
 void main()
 {
