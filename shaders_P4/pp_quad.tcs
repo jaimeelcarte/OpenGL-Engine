@@ -1,0 +1,38 @@
+#version 400
+
+layout (vertices = 4) out;
+
+in vData
+{
+	vec3 pos;
+    vec3 color;
+	vec3 norm;
+	vec2 texCoord;
+}vertex[];
+
+out tesData
+{
+	vec3 pos;
+    vec3 color;
+	vec3 norm;
+	vec2 texCoord;
+}tes[];
+
+uniform int nSub;
+
+void main()
+{
+	tes[gl_InvocationID].pos = vertex[gl_InvocationID].pos;
+	tes[gl_InvocationID].color = vertex[gl_InvocationID].color;
+	tes[gl_InvocationID].norm = vertex[gl_InvocationID].norm;
+	tes[gl_InvocationID].texCoord = vertex[gl_InvocationID].texCoord;
+
+	gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
+
+	gl_TessLevelOuter[0] = nSub;
+	gl_TessLevelOuter[1] = nSub;
+	gl_TessLevelOuter[2] = nSub;
+	gl_TessLevelOuter[3] = nSub;
+	gl_TessLevelInner[0] = nSub;
+	gl_TessLevelInner[1] = nSub;
+}

@@ -26,7 +26,7 @@ void main()
 	vertex.norm = (normal * vec4(inNormal, 0.0)).xyz;
 	vertex.pos = (modelView * vec4(inPos, 1.0)).xyz;
 	
-	gl_Position =  vec4 (inPos,1.0);
+	gl_Position = vec4 (inPos,1.0);
 
 
 }

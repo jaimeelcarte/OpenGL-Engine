@@ -1,0 +1,53 @@
+#version 410 core
+
+layout(triangles, equal_spacing, ccw ) in;
+
+in tesData
+{
+	vec3 pos;
+    vec3 color;
+	vec3 norm;
+	vec2 texCoord;
+}tes[];
+
+out vData
+{
+	vec3 pos;
+    vec3 color;
+	vec3 norm;
+	vec2 texCoord;
+}vertex;
+
+uniform mat4 modelViewProj;
+
+vec4 interpolate(vec4 v0, vec4 v1, vec4 v2);
+vec2 interpolate2D(vec2 v0, vec2 v1, vec2 v2);
+vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2);
+
+void main()
+{
+	vertex.pos = interpolate3D(tes[0].pos, tes[1].pos, tes[2].pos);
+	vertex.color = interpolate3D(tes[0].color, tes[1].color, tes[2].color);
+	vertex.norm = interpolate3D(tes[0].norm, tes[1].norm, tes[2].norm);
+	vertex.norm = normalize(vertex.norm);
+	vertex.texCoord = interpolate2D(tes[0].texCoord, tes[1].texCoord, tes[2].texCoord);
+
+	
+	gl_Position = interpolate(gl_in[0].gl_Position, gl_in[1].gl_Position, gl_in[2].gl_Position);
+}
+
+vec2 interpolate2D(vec2 v0, vec2 v1, vec2 v2)
+{
+    return vec2(gl_TessCoord.x) * v0 + vec2(gl_TessCoord.y) * v1 + vec2(gl_TessCoord.z) * v2;
+}
+
+vec3 interpolate3D(vec3 v0, vec3 v1, vec3 v2)
+{
+    return vec3(gl_TessCoord.x) * v0 + vec3(gl_TessCoord.y) * v1 + vec3(gl_TessCoord.z) * v2;
+} 
+
+vec4 interpolate(vec4 v0, vec4 v1, vec4 v2)
+{
+    return vec4(gl_TessCoord.x) * v0 + vec4(gl_TessCoord.y) * v1 + vec4(gl_TessCoord.z) * v2;
+} 
+

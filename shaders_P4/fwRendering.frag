@@ -8,7 +8,6 @@ in vec3 norm;
 in vec2 texCoord;
 
 uniform sampler2D colorTex;
-uniform sampler2D emiTex;
 
 //Propiedades del objeto
 vec3 Ka;
@@ -29,8 +28,12 @@ vec3 shade();
 
 void main()
 {
-	Ka = color;
-	Kd = color;
+
+	//Ka = color;
+	//Kd = color;
+	vec3 textureColor = texture(colorTex, texCoord).rgb;
+	Ka = textureColor;
+	Kd = textureColor;
 	Ke = vec3(0.0);
 	Ks = vec3 (1.0);
 

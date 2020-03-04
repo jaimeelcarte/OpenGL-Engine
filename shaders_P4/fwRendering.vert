@@ -9,6 +9,8 @@ uniform mat4 modelViewProj;
 uniform mat4 modelView;
 uniform mat4 normal;
 
+uniform sampler2D colorTex;
+
 out vec3 color;
 out vec3 pos;
 out vec3 norm;

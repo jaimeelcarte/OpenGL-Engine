@@ -1,0 +1,60 @@
+#version 400
+
+layout (vertices = 3) out;
+
+in vData
+{
+	vec3 pos;
+    vec3 color;
+	vec3 norm;
+	vec2 texCoord;
+}vertex[];
+
+out tesData
+{
+	vec3 pos;
+    vec3 color;
+	vec3 norm;
+	vec2 texCoord;
+}tes[];
+
+uniform float dispFactor;
+uniform vec3 cameraPos;
+
+float getTessLevel(float Distance0, float Distance1)
+{	
+	float AvgDistance = (Distance0 + Distance1) / 2.0;
+
+	if(AvgDistance <= 15.0) {
+		return 20.0;
+	}
+	else if(AvgDistance <= 30.0){
+		return 5.0;
+	}
+	else {
+		return 3.0;
+	}
+}
+
+void main()
+{
+	tes[gl_InvocationID].pos = vertex[gl_InvocationID].pos;
+	tes[gl_InvocationID].color = vertex[gl_InvocationID].color;
+	tes[gl_InvocationID].norm = vertex[gl_InvocationID].norm;
+	tes[gl_InvocationID].texCoord = vertex[gl_InvocationID].texCoord;
+
+	// Need to compute Distance from camera to vertex
+	float Distance0 = distance(cameraPos, tes[0].pos);
+	float Distance1 = distance(cameraPos, tes[1].pos);
+	float Distance2 = distance(cameraPos, tes[2].pos);
+
+	//gl_TessLevelOuter[0] = nSub;
+	//gl_TessLevelOuter[1] = nSub;
+	//gl_TessLevelOuter[2] = nSub;
+
+	gl_TessLevelOuter[0] = getTessLevel(Distance1, Distance2);
+	gl_TessLevelOuter[1] = getTessLevel(Distance2, Distance0);
+	gl_TessLevelOuter[2] = getTessLevel(Distance0, Distance1);
+	gl_TessLevelInner[0] = gl_TessLevelOuter[2];
+}
+

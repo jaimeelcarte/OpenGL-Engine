@@ -1,6 +1,7 @@
 ﻿#include "BOX.h"
 #include "auxiliar.h"
 #include "PLANE.h"
+#include "TRIANGLE.h"
 #include "OBJ_Loader.h"
 
 #include <gl/glew.h>
@@ -16,7 +17,7 @@
 #include <cstdlib>
 
 #define RAND_SEED 31415926
-#define SCREEN_SIZE 500,500
+#define SCREEN_SIZE 1280,720
 
 //////////////////////////////////////////////////////////////
 // Datos que se almacenan en la memoria de la CPU
@@ -41,13 +42,15 @@ std::vector< objl::Vector2 >  texCoords;
 std::vector<unsigned int> indices;
 
 //Ajustes de la camara
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 10.0f);
+glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 25.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 //Opciones de post-procesado
 bool postProcessing = true;
-const char* ppShaderOption = "normals"; //
+bool isQuad = false;
+bool usingModel = true;
+const char* ppShaderOption = "map"; //
 
 
 //Parametros Motion Blur
@@ -56,6 +59,10 @@ float alpha = 0.6f;
 float red = 0.5f;
 float green = 0.5f;
 float blue = 0.5f;
+
+//Parametros tessellation
+float dispFactor = 0.0f;
+int nSub = 1;
 
 unsigned int fbo;
 unsigned int colorBuffTexId;
@@ -76,6 +83,8 @@ unsigned int emiTexId;
 
 unsigned int planeVAO;
 unsigned int planeVertexVBO;
+unsigned int triangleVAO;
+unsigned int triangleVertexVBO;
 
 //Por definir
 unsigned int vshader;
@@ -83,10 +92,16 @@ unsigned int fshader;
 unsigned int program;
 
 //Variables Uniform 
+int uModelMat;
 int uModelViewMat;
+int uViewProjMat;
 int uModelViewProjMat;
 int uNormalMat;
 
+//Tessellation 
+int uDispFactor;
+int uNSub;
+int uCameraPos;
 
 //Texturas Uniform
 int uColorTex;
@@ -101,6 +116,8 @@ int inTexCoord;
 
 //Post-proceso
 unsigned int postProccesVShader;
+unsigned int postProccesTCS_Shader;
+unsigned int postProccesTES_Shader;
 unsigned int postProccesGShader;
 unsigned int postProccesFShader;
 unsigned int postProccesProgram;
@@ -124,14 +141,18 @@ void keyboardFunc(unsigned char key, int x, int y);
 void mouseFunc(int button, int state, int x, int y);
 
 void renderCube();
+void renderTeapot();
 
 //Funciones de inicialización y destrucción
 void initContext(int argc, char** argv);
 void initOGL();
 void initShaderFw(const char *vname, const char *fname);
-void initShaderPP(const char *vname, const char *gname, const char *fname);
+void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name, const char *gname, const char *fname);
 void initObj();
+
 void initPlane();
+void initTriangle();
+
 void initFBO();
 void destroy();
 
@@ -165,16 +186,24 @@ int main(int argc, char** argv)
 	initShaderFw("../shaders_P4/fwRendering.vert", "../shaders_P4/fwRendering.frag");
 	if (postProcessing) {
 		if (ppShaderOption == "points")
-			initShaderPP("../shaders_P4/pp_points.vert", "../shaders_P4/pp_points.geom", "../shaders_P4/pp_points.frag");
+			initShaderPP("../shaders_P4/pp_points.vert", "../shaders_P4/pp_triangle.tcs", "../shaders_P4/pp_triangle.tes", "../shaders_P4/pp_points.geom", "../shaders_P4/pp_points.frag");
 		else if (ppShaderOption == "normals")
-			initShaderPP("../shaders_P4/pp_normals.vert", "../shaders_P4/pp_normals.geom", "../shaders_P4/pp_normals.frag");
+			initShaderPP("../shaders_P4/pp_normals.vert", "../shaders_P4/pp_triangle.tcs", "../shaders_P4/pp_triangle.tes", "../shaders_P4/pp_normals.geom", "../shaders_P4/pp_normals.frag");
 		else if (ppShaderOption == "wired")
-			initShaderPP("../shaders_P4/pp_wired.vert", "../shaders_P4/pp_wired.geom", "../shaders_P4/pp_wired.frag");
+		{
+			if (isQuad)
+				initShaderPP("../shaders_P4/pp_wired.vert", "../shaders_P4/pp_quad.tcs", "../shaders_P4/pp_quad.tes", "../shaders_P4/pp_wired.geom", "../shaders_P4/pp_wired.frag");
+			else
+				initShaderPP("../shaders_P4/pp_wired.vert", "../shaders_P4/pp_triangle.tcs", "../shaders_P4/pp_triangle.tes", "../shaders_P4/pp_wired.geom", "../shaders_P4/pp_wired.frag");
+		}
+		else if(ppShaderOption == "map")
+			initShaderPP("../shaders_P4/pp_map.vert", "../shaders_P4/pp_map.tcs", "../shaders_P4/pp_map.tes", "../shaders_P4/pp_map.geom", "../shaders_P4/pp_map.frag");
+			
 	}
 	
 
 	loader = objl::Loader();
-	loader.LoadFile("../obj/mono2.obj");
+	loader.LoadFile("../obj/teapot2.obj");
 
 	for (int i = 0; i < loader.LoadedVertices.size(); ++i)
 	{
@@ -186,6 +215,7 @@ int main(int argc, char** argv)
 
 	initObj();
 	initPlane();
+	initTriangle();
 	initFBO();
 	
 	glutMainLoop();
@@ -222,7 +252,10 @@ void initContext(int argc, char** argv)
 	std::cout << "This system supports OpenGL Version: " << oglVersion << std::endl;
 
 	glutReshapeFunc(resizeFunc);
-	glutDisplayFunc(renderFunc);
+	if(ppShaderOption == "map")
+		glutDisplayFunc(renderTeapot);
+	else
+		glutDisplayFunc(renderFunc);
 	glutIdleFunc(idleFunc);
 	glutKeyboardFunc(keyboardFunc);
 	glutMouseFunc(mouseFunc);
@@ -237,7 +270,7 @@ void initOGL()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
 
-	proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, 50.0f);
+	proj = glm::perspective(glm::radians(60.0f), 16.0f/9.0f, 0.1f, 100.0f);
 	view = glm::mat4(1.0f);
 	view[3].z = -25.0f;
 }
@@ -255,7 +288,11 @@ void destroy()
 	glDetachShader(postProccesProgram, postProccesFShader);
 	if (postProcessing) {
 		glDetachShader(program, postProccesGShader);
+		glDetachShader(program, postProccesTCS_Shader);
+		glDetachShader(program, postProccesTES_Shader);
 		glDeleteShader(postProccesGShader);
+		glDeleteShader(postProccesTCS_Shader);
+		glDeleteShader(postProccesTES_Shader);
 	}
 	glDeleteShader(postProccesVShader);
 	glDeleteShader(postProccesFShader);
@@ -328,17 +365,26 @@ void initShaderFw(const char *vname, const char *fname)
 	inTexCoord = glGetAttribLocation(program, "inTexCoord");
 }
 
-void initShaderPP(const char *vname, const char *gname, const char *fname)
+void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name, const char *gname, const char *fname)
 {
 	postProccesVShader = loadShader(vname, GL_VERTEX_SHADER);
+	postProccesTCS_Shader = loadShader(tcs_name, GL_TESS_CONTROL_SHADER);
+	postProccesTES_Shader = loadShader(tes_name, GL_TESS_EVALUATION_SHADER);
 	postProccesGShader = loadShader(gname, GL_GEOMETRY_SHADER);
 	postProccesFShader = loadShader(fname, GL_FRAGMENT_SHADER);
 
 	postProccesProgram = glCreateProgram();
 	glAttachShader(postProccesProgram, postProccesVShader);
+	glAttachShader(postProccesProgram, postProccesTCS_Shader);
+	glAttachShader(postProccesProgram, postProccesTES_Shader);
 	glAttachShader(postProccesProgram, postProccesGShader);
 	glAttachShader(postProccesProgram, postProccesFShader);
+
 	glBindAttribLocation(postProccesProgram, 0, "inPos"); 
+	glBindAttribLocation(postProccesProgram, 1, "inColor");
+	glBindAttribLocation(postProccesProgram, 2, "inNormal");
+	glBindAttribLocation(postProccesProgram, 3, "inTexCoord");
+
 	glLinkProgram(postProccesProgram);
 	int linked;
 	glGetProgramiv(postProccesProgram, GL_LINK_STATUS, &linked);
@@ -355,14 +401,25 @@ void initShaderPP(const char *vname, const char *gname, const char *fname)
 		postProccesProgram = 0;
 		exit(-1);
 	}
+	
+	uModelMat = glGetUniformLocation(postProccesProgram, "model");
+	uViewProjMat = glGetUniformLocation(postProccesProgram, "viewProj");
+
 	uColorTexPP = glGetUniformLocation(postProccesProgram, "colorTex");
-	inPosPP = glGetAttribLocation(postProccesProgram, "inPos");
+	uEmiTex = glGetUniformLocation(postProccesProgram, "emiTex");
+	uNSub = glGetUniformLocation(postProccesProgram, "nSub");
+	uDispFactor = glGetUniformLocation(postProccesProgram, "dispFactor");
 	uAlpha = glGetUniformLocation(postProccesProgram, "alpha");
+	uCameraPos = glGetUniformLocation(postProccesProgram, "cameraPos");
+
+	inPosPP = glGetAttribLocation(postProccesProgram, "inPos");
+	inColor = glGetAttribLocation(postProccesProgram, "inColor");
+	inNormal = glGetAttribLocation(postProccesProgram, "inNormal");
+	inTexCoord = glGetAttribLocation(postProccesProgram, "inTexCoord");
+
 	glUseProgram(postProccesProgram);
 	if (uColorTexPP != -1)
 		glUniform1i(uColorTexPP, 0);
-
-
 }
 
 void initObj()
@@ -419,7 +476,7 @@ void initObj()
 
 	model = glm::mat4(1.0f);
 
-	colorTexId = loadTex("../img/color2.png");
+	colorTexId = loadTex("../img/mapamundi.jpg");
 	emiTexId = loadTex("../img/emissive.png");
 }
 
@@ -435,6 +492,22 @@ void initPlane()
 		planeVertexPos, GL_STATIC_DRAW); //Reserva memoria de la tarjeta gráfica y subo datos relativos al plano
 	glVertexAttribPointer(inPosPP, 3, GL_FLOAT, GL_FALSE, 0, 0); //Le dije a que atributo asignar las posiciones del vertice
 	glEnableVertexAttribArray(inPosPP); 
+
+}
+
+void initTriangle()
+{
+
+	glGenVertexArrays(1, &triangleVAO);
+	glBindVertexArray(triangleVAO);
+
+	glGenBuffers(1, &triangleVertexVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, triangleVertexVBO);
+
+	glBufferData(GL_ARRAY_BUFFER, triangleNVertex * sizeof(float) * 3,
+		triangleVertexPos, GL_STATIC_DRAW); //Reserva memoria de la tarjeta gráfica y subo datos relativos al plano
+	glVertexAttribPointer(inPosPP, 3, GL_FLOAT, GL_FALSE, 0, 0); //Le dije a que atributo asignar las posiciones del vertice
+	glEnableVertexAttribArray(inPosPP);
 
 }
 
@@ -494,15 +567,15 @@ unsigned int loadTex(const char *fileName)
 	delete[] map;
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
-		GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+	//glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 
 	return texId;
 }
-
 void renderFunc()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); //Primero lo activo y luego lo limpio
@@ -540,11 +613,14 @@ void renderFunc()
 		glUniform1i(uEmiTex, 1);
 	}
 
-
-	glBindVertexArray(vao);
-	glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
-		GL_UNSIGNED_INT, (void*)0);
-
+	if (usingModel)
+	{
+		glBindVertexArray(vao);
+		glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
+			GL_UNSIGNED_INT, (void*)0);
+	}
+	
+	
 	glBindFramebuffer(GL_FRAMEBUFFER, 0); //Activo el fbo por defecto (para que se pueda ver por pantalla)
 
 	if (postProcessing) {
@@ -559,6 +635,11 @@ void renderFunc()
 		if (uNormalMat != -1)
 			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 				&(normal[0][0]));
+		if (uDispFactor != -1)
+			glUniform1f(uDispFactor, dispFactor);
+		if (uNSub != -1)
+			glUniform1i(uNSub, nSub);
+		
 		/*
 		glDisable(GL_CULL_FACE);
 		glDisable(GL_DEPTH_TEST);
@@ -581,11 +662,49 @@ void renderFunc()
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, colorBuffTexId); //No está cambiando para nada el estado del shader
 		*/
+		
+		
 
-		glPointSize(5.0f);
-		glBindVertexArray(vao);
-		glDrawElements(GL_TRIANGLES, loader.LoadedIndices.size() * 3,
-			GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
+		
+
+		//Prueba con el quad
+		
+		if (isQuad)
+		{
+
+			glPatchParameteri(GL_PATCH_VERTICES, 4); //Definimos el numero de patch
+
+			if (usingModel)
+			{
+				glPointSize(5.0f);
+				glBindVertexArray(vao);
+				glDrawElements(GL_PATCHES, loader.LoadedIndices.size() * 3,
+					GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
+			}
+			else 
+			{
+				glBindVertexArray(planeVAO);
+				glDrawArrays(GL_PATCHES, 0, 4); //Es necesario utilizar la topología patch
+			}
+		}
+		else
+		{
+			glPatchParameteri(GL_PATCH_VERTICES, 3); //Definimos el numero de patch
+			if (usingModel)
+			{
+				glPointSize(5.0f);
+				glBindVertexArray(vao);
+				glDrawElements(GL_PATCHES, loader.LoadedIndices.size() * 3,
+					GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 4 vertices
+			}
+			else
+			{
+				glBindVertexArray(triangleVAO);
+				glDrawArrays(GL_PATCHES, 0, 3); //Es necesario utilizar la topología patch
+			}
+		}
+		
+
 		/*
 		glDisable(GL_BLEND);
 		glEnable(GL_CULL_FACE);
@@ -595,6 +714,71 @@ void renderFunc()
 	}
 	glutSwapBuffers();
 	
+}
+
+void renderTeapot()
+{
+	/**/
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glUseProgram(postProccesProgram);
+	
+	glm::mat4 modelView = view * model;
+	glm::mat4 modelViewProj = proj * model;
+	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+	glm::mat4 viewProj = proj * view;
+	glm::vec4 camPos = model * glm::vec4(cameraPos, 1.0);
+	if (uModelMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
+		glUniformMatrix4fv(uModelMat, 1, GL_FALSE,
+			&(model[0][0]));
+	if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
+		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
+			&(modelView[0][0]));
+	if (uViewProjMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
+		glUniformMatrix4fv(uViewProjMat, 1, GL_FALSE,
+			&(viewProj[0][0]));
+	if (uModelViewProjMat != -1)
+		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
+			&(modelViewProj[0][0]));
+	if (uNormalMat != -1)
+		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
+			&(normal[0][0]));
+	if (uDispFactor != -1)
+		glUniform1f(uDispFactor, dispFactor);
+	if (uNSub != -1)
+		glUniform1i(uNSub, nSub);
+	if (uCameraPos != -1)
+		glUniform3fv(uCameraPos, 1, &(camPos[0]));
+
+	//Texturas
+	if (uColorTex != -1)
+	{
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, colorTexId);
+		glUniform1i(uColorTex, 0); //No tiene que ver con la textura, sino con el shader
+	}
+
+	if (uEmiTex != -1)
+	{
+		glActiveTexture(GL_TEXTURE0 + 1);
+		glBindTexture(GL_TEXTURE_2D, emiTexId);
+		glUniform1i(uEmiTex, 1);
+	}
+
+	
+
+	// Dynamic LODs
+
+	glPatchParameteri(GL_PATCH_VERTICES, 3); //Definimos el numero de patch
+	glPointSize(5.0f);
+	glBindVertexArray(vao);
+	glDrawElements(GL_PATCHES, loader.LoadedIndices.size() * 3,
+		GL_UNSIGNED_INT, (void*)0); //Desde el vertice 0, pintamos 3 vertices
+	
+	glutSwapBuffers();
+
 }
 
 void renderCube()
@@ -695,16 +879,19 @@ void keyboardFunc(unsigned char key, int x, int y)
 	float cameraSpeed = 1.0;
 	float cameraRotate = 0.1;
 
-	if (key == 'f')
+	if (key == 'j')
 	{
 		angulo = (angulo < 6.2830f) ? angulo + cameraRotate : 0.0f; //? true:false
 		cameraFront = glm::rotate(cameraFront, angulo, glm::vec3(0.0f, 1.0f, 0.0f));
 	}
-	else if (key == 'g')
+	else if (key == 'l')
 	{
 		angulo = (angulo < 6.2830f) ? angulo - cameraRotate : 0.0f;
 		cameraFront = glm::rotate(cameraFront, angulo, glm::vec3(0.0f, 1.0f, 0.0f));
 	}
+	
+	else if (key == 'm') cameraPos += cameraSpeed * cameraUp;
+	else if (key == 'n') cameraPos -= cameraSpeed * cameraUp;
 	else if (key == 'w') cameraPos += cameraSpeed * cameraFront;
 	else if (key == 's') cameraPos -= cameraSpeed * cameraFront;
 	else if (key == 'a') cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
@@ -714,7 +901,11 @@ void keyboardFunc(unsigned char key, int x, int y)
 	else if (key == '1') ppShaderOption = "points";
 	else if (key == '2') ppShaderOption = "normals";
 	else if (key == '3') ppShaderOption = "wired";
-
+	else if (ppShaderOption == "map" && key == '+') dispFactor += 0.1f;
+	else if (ppShaderOption == "map" && key == '-') dispFactor -= 0.1f;
+	else if (ppShaderOption != "map" && key == '+') nSub++;
+	else if (ppShaderOption != "map" && key == '-') nSub--;
+	std::cout << dispFactor << std::endl;
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
 void mouseFunc(int button, int state, int x, int y){}

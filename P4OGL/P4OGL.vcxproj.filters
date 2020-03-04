@@ -18,6 +18,9 @@
     <ClInclude Include="scr\PLANE.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="scr\TRIANGLE.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="scr\auxiliar.cpp">
@@ -59,6 +62,33 @@
       <Filter>shaders</Filter>
     </None>
     <None Include="..\shaders_P4\pp_normals.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_quad.tcs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_quad.tes">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_triangle.tcs">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_triangle.tes">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_map.geom">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_map.tes">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_map.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_map.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\pp_map.tcs">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>
