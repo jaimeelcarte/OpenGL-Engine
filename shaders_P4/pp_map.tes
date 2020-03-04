@@ -39,6 +39,7 @@ void main()
 	vertex.norm = interpolate3D(tes[0].norm, tes[1].norm, tes[2].norm);
 	vertex.norm = normalize(vertex.norm);
 	vertex.pos = interpolate3D(tes[0].pos, tes[1].pos, tes[2].pos);
+	vertex.color = texture(colorTex, vertex.texCoord.xy).xyz;
 	
 	float Displacement = texture(colorTex, vertex.texCoord.xy).x;
 	vertex.pos += vertex.norm * Displacement * nSub;

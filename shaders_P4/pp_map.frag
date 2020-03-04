@@ -32,11 +32,11 @@ vec3 shade();
 void main()
 {
 
-	vec3 textureColor = texture(colorTex, frag.texCoord).xyz;
-	Ka = textureColor;
-	Kd = textureColor;
-//	Ka = frag.color;
-//	Kd = frag.color;
+//	vec3 textureColor = texture(colorTex, frag.texCoord).xyz;
+//	Ka = textureColor;
+//	Kd = textureColor;
+	Ka = frag.color;
+	Kd = frag.color;
 	Ke = vec3(0.0);
 	Ks = vec3 (1.0);
 
