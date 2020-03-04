@@ -17,7 +17,7 @@
 #include <cstdlib>
 
 #define RAND_SEED 31415926
-#define SCREEN_SIZE 500,500
+#define SCREEN_SIZE 1280,720
 
 //////////////////////////////////////////////////////////////
 // Datos que se almacenan en la memoria de la CPU
@@ -61,7 +61,7 @@ float green = 0.5f;
 float blue = 0.5f;
 
 //Parametros tessellation
-int nSub = 2;
+float nSub = 0.0f;
 
 unsigned int fbo;
 unsigned int colorBuffTexId;
@@ -91,7 +91,9 @@ unsigned int fshader;
 unsigned int program;
 
 //Variables Uniform 
+int uModelMat;
 int uModelViewMat;
+int uViewProjMat;
 int uModelViewProjMat;
 int uNormalMat;
 
@@ -266,7 +268,7 @@ void initOGL()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
 
-	proj = glm::perspective(glm::radians(60.0f), 1.0f, 1.0f, 100.0f);
+	proj = glm::perspective(glm::radians(60.0f), 16.0f/9.0f, 0.1f, 100.0f);
 	view = glm::mat4(1.0f);
 	view[3].z = -25.0f;
 }
@@ -397,6 +399,10 @@ void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name,
 		postProccesProgram = 0;
 		exit(-1);
 	}
+	
+	uModelMat = glGetUniformLocation(postProccesProgram, "model");
+	uViewProjMat = glGetUniformLocation(postProccesProgram, "viewProj");
+
 	uColorTexPP = glGetUniformLocation(postProccesProgram, "colorTex");
 	uEmiTex = glGetUniformLocation(postProccesProgram, "emiTex");
 	uNSub = glGetUniformLocation(postProccesProgram, "nSub");
@@ -627,7 +633,7 @@ void renderFunc()
 			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 				&(normal[0][0]));
 		if (uNSub != -1)
-			glUniform1i(uNSub, nSub);
+			glUniform1f(uNSub, nSub);
 		
 		/*
 		glDisable(GL_CULL_FACE);
@@ -713,11 +719,19 @@ void renderTeapot()
 	glUseProgram(postProccesProgram);
 	
 	glm::mat4 modelView = view * model;
-	glm::mat4 modelViewProj = proj * view * model;
+	glm::mat4 modelViewProj = proj * model;
 	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+	glm::mat4 viewProj = proj * view;
+	glm::vec4 camPos = model * glm::vec4(cameraPos, 1.0);
+	if (uModelMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
+		glUniformMatrix4fv(uModelMat, 1, GL_FALSE,
+			&(model[0][0]));
 	if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
 		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
 			&(modelView[0][0]));
+	if (uViewProjMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
+		glUniformMatrix4fv(uViewProjMat, 1, GL_FALSE,
+			&(viewProj[0][0]));
 	if (uModelViewProjMat != -1)
 		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
 			&(modelViewProj[0][0]));
@@ -725,9 +739,9 @@ void renderTeapot()
 		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 			&(normal[0][0]));
 	if (uNSub != -1)
-		glUniform1i(uNSub, nSub);
+		glUniform1f(uNSub, nSub);
 	if (uCameraPos != -1)
-		glUniform3fv(uCameraPos, 1, &(cameraPos[0]));
+		glUniform3fv(uCameraPos, 1, &(camPos[0]));
 
 	//Texturas
 	if (uColorTex != -1)
@@ -876,8 +890,8 @@ void keyboardFunc(unsigned char key, int x, int y)
 	else if (key == '1') ppShaderOption = "points";
 	else if (key == '2') ppShaderOption = "normals";
 	else if (key == '3') ppShaderOption = "wired";
-	else if (key == '+') nSub++;
-	else if (key == '-') nSub--;
+	else if (key == '+') nSub += 0.1f;
+	else if (key == '-') nSub -= 0.1f;
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
 void mouseFunc(int button, int state, int x, int y){}
