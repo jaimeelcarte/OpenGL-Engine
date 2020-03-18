@@ -19,6 +19,9 @@
 #define RAND_SEED 31415926
 #define SCREEN_SIZE 1280,720
 
+#define NUM_PARTICLES 1024*1024
+#define WORK_GROUP_SIZE 128
+
 //////////////////////////////////////////////////////////////
 // Datos que se almacenan en la memoria de la CPU
 //////////////////////////////////////////////////////////////
@@ -28,6 +31,19 @@ glm::mat4	proj = glm::mat4(1.0f);
 glm::mat4	view = glm::mat4(1.0f);
 glm::mat4	model = glm::mat4(1.0f);
 
+//Estructuras
+struct pos
+{
+	float x, y, z, w;
+};
+struct vel
+{
+	float vx, vy, vz, vw;
+};
+struct color
+{
+	float r, g, b, a;
+};
 
 //////////////////////////////////////////////////////////////
 // Variables que nos dan acceso a Objetos OpenGL
