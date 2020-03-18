@@ -19,6 +19,9 @@
 #define RAND_SEED 31415926
 #define SCREEN_SIZE 1280,720
 
+#define NUM_PARTICLES 1024*1024
+#define WORK_GROUP_SIZE 128
+
 //////////////////////////////////////////////////////////////
 // Datos que se almacenan en la memoria de la CPU
 //////////////////////////////////////////////////////////////
@@ -28,6 +31,19 @@ glm::mat4	proj = glm::mat4(1.0f);
 glm::mat4	view = glm::mat4(1.0f);
 glm::mat4	model = glm::mat4(1.0f);
 
+//Estructuras
+struct pos
+{
+	float x, y, z, w;
+};
+struct vel
+{
+	float vx, vy, vz, vw;
+};
+struct color
+{
+	float r, g, b, a;
+};
 
 //////////////////////////////////////////////////////////////
 // Variables que nos dan acceso a Objetos OpenGL
@@ -68,6 +84,11 @@ unsigned int fbo;
 unsigned int colorBuffTexId;
 unsigned int depthBuffTexId;
 
+//SSBO
+unsigned int posSSBO;
+unsigned int velSSBO;
+unsigned int colSSBO;
+
 //VAO
 unsigned int vao;
 
@@ -90,6 +111,9 @@ unsigned int triangleVertexVBO;
 unsigned int vshader;
 unsigned int fshader;
 unsigned int program;
+
+unsigned int cshader;
+unsigned int programCompute;
 
 //Variables Uniform 
 int uModelMat;
@@ -142,16 +166,19 @@ void mouseFunc(int button, int state, int x, int y);
 
 void renderCube();
 void renderTeapot();
+void renderParticles();
 
 //Funciones de inicialización y destrucción
 void initContext(int argc, char** argv);
 void initOGL();
 void initShaderFw(const char *vname, const char *fname);
 void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name, const char *gname, const char *fname);
+void initComputeShader(const char *cname);
 void initObj();
 
 void initPlane();
 void initTriangle();
+void initStructure();
 
 void initFBO();
 void destroy();
@@ -422,6 +449,16 @@ void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name,
 		glUniform1i(uColorTexPP, 0);
 }
 
+void initComputeShader(const char *cname)
+{
+	cshader = loadShader(cname, GL_COMPUTE_SHADER);
+
+	programCompute = glCreateProgram();
+	glAttachShader(programCompute, cshader);
+	glLinkProgram(programCompute);
+
+}
+
 void initObj()
 {
 	glGenVertexArrays(1, &vao);
@@ -508,7 +545,45 @@ void initTriangle()
 		triangleVertexPos, GL_STATIC_DRAW); //Reserva memoria de la tarjeta gráfica y subo datos relativos al plano
 	glVertexAttribPointer(inPosPP, 3, GL_FLOAT, GL_FALSE, 0, 0); //Le dije a que atributo asignar las posiciones del vertice
 	glEnableVertexAttribArray(inPosPP);
+}
 
+void initStructure()
+{
+	glGenBuffers(1, &posSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, posSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct pos), NULL, GL_STATIC_DRAW);
+
+	unsigned int bufMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+
+	struct pos *points = (struct pos *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct pos), bufMask);
+	for (int i = 0; i < NUM_PARTICLES; ++i)
+	{
+		//De momento hardcodeo el random de los elementos
+		points[i].x = Ranf(-5.0, 5.0);
+		points[i].y = Ranf(-5.0, 5.0);
+		points[i].z = Ranf(-5.0, 5.0);
+		points[i].w = 1;
+	}
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+	glGenBuffers(1, &velSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, velSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct vel), NULL, GL_STATIC_DRAW);
+
+	struct vel *vels = (struct vel *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct vel), bufMask);
+	for (int i = 0; i < NUM_PARTICLES; ++i)
+	{
+		//De momento hardcodeo el random de los elementos
+		vels[i].vx = Ranf(-2.0, 2.0);
+		vels[i].vy = Ranf(-2.0, 2.0);
+		vels[i].vz = Ranf(-2.0, 2.0);
+		vels[i].vw = 1;
+	}
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, velSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, colSSBO);
 }
 
 GLuint loadShader(const char *fileName, GLenum type)
@@ -781,6 +856,22 @@ void renderTeapot()
 
 }
 
+void renderParticles()
+{
+	glUseProgram(programCompute);
+	glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+	glUseProgram(program);
+	glBindBuffer(GL_ARRAY_BUFFER, posSSBO);
+	glVertexPointer(4, GL_FLOAT, 0, (void *)0);
+	glEnableClientState(GL_VERTEX_ARRAY);
+	glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
+	glDisableClientState(GL_VERTEX_ARRAY);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+}
+
 void renderCube()
 {
 	glm::mat4 modelView = view * model;
@@ -909,4 +1000,10 @@ void keyboardFunc(unsigned char key, int x, int y)
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
 void mouseFunc(int button, int state, int x, int y){}
+
+//Metodo auxiliar para generar un float aleatorio
+float Ranf(float Min, float Max)
+{
+	return ((float(rand()) / float(RAND_MAX)) * (Max - Min)) + Min;
+}
 
