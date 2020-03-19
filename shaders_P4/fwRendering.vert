@@ -1,4 +1,9 @@
-#version 330 core
+#version 430 core
+
+layout (binding=4, std430) buffer Pos
+{
+    vec4 vertices[];
+};
 
 in vec3 inPos;	
 in vec3 inColor;
@@ -16,12 +21,13 @@ out vec3 pos;
 out vec3 norm;
 out vec2 texCoord;
 
+
 void main()
 {
-	color = vec3(0.2,0.2,0.2);
+	color = vec3(1.0,1.0,0.0);
 	texCoord = inTexCoord;
 	norm = (normal * vec4(inNormal, 0.0)).xyz;
-	pos = (modelView * vec4(inPos, 1.0)).xyz;
-	gl_Position =  modelViewProj * vec4 (inPos,1.0);
+	pos = (modelView * vertices[gl_VertexID]).xyz;
+	gl_Position =  modelViewProj * vertices[gl_VertexID];
 
 }

@@ -23,6 +23,7 @@
   <ItemGroup>
     <None Include="..\shaders_P4\fwRendering.frag" />
     <None Include="..\shaders_P4\fwRendering.vert" />
+    <None Include="..\shaders_P4\particleSystem.comp" />
     <None Include="..\shaders_P4\pp_map.frag" />
     <None Include="..\shaders_P4\pp_map.tcs" />
     <None Include="..\shaders_P4\pp_map.tes" />

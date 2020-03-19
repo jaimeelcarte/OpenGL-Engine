@@ -91,6 +91,7 @@ unsigned int colSSBO;
 
 //VAO
 unsigned int vao;
+unsigned int vaoC;
 
 //VBOs que forman parte del objeto
 unsigned int posVBO;
@@ -184,6 +185,7 @@ void initFBO();
 void destroy();
 
 
+
 //Carga el shader indicado, devuele el ID del shader
 //!Por implementar
 GLuint loadShader(const char *fileName, GLenum type);
@@ -202,6 +204,7 @@ unsigned int loadTex(const char *fileName);
 // Nuevas funciones auxiliares
 //////////////////////////////////////////////////////////////
 //!!Por implementar
+float Ranf(float Min, float Max);
 
 
 int main(int argc, char** argv)
@@ -211,6 +214,8 @@ int main(int argc, char** argv)
 	initContext(argc, argv);
 	initOGL();
 	initShaderFw("../shaders_P4/fwRendering.vert", "../shaders_P4/fwRendering.frag");
+	initComputeShader("../shaders_P4/particleSystem.comp");
+
 	if (postProcessing) {
 		if (ppShaderOption == "points")
 			initShaderPP("../shaders_P4/pp_points.vert", "../shaders_P4/pp_triangle.tcs", "../shaders_P4/pp_triangle.tes", "../shaders_P4/pp_points.geom", "../shaders_P4/pp_points.frag");
@@ -243,6 +248,7 @@ int main(int argc, char** argv)
 	initObj();
 	initPlane();
 	initTriangle();
+	initStructure();
 	initFBO();
 	
 	glutMainLoop();
@@ -279,10 +285,13 @@ void initContext(int argc, char** argv)
 	std::cout << "This system supports OpenGL Version: " << oglVersion << std::endl;
 
 	glutReshapeFunc(resizeFunc);
+	glutDisplayFunc(renderParticles);
+	/*
 	if(ppShaderOption == "map")
 		glutDisplayFunc(renderTeapot);
 	else
 		glutDisplayFunc(renderFunc);
+	*/
 	glutIdleFunc(idleFunc);
 	glutKeyboardFunc(keyboardFunc);
 	glutMouseFunc(mouseFunc);
@@ -457,6 +466,22 @@ void initComputeShader(const char *cname)
 	glAttachShader(programCompute, cshader);
 	glLinkProgram(programCompute);
 
+	int linked;
+	glGetProgramiv(programCompute, GL_LINK_STATUS, &linked);
+	if (!linked)
+	{
+		//Calculamos una cadena de error
+		GLint logLen;
+		glGetProgramiv(programCompute, GL_INFO_LOG_LENGTH, &logLen);
+		char *logString = new char[logLen];
+		glGetProgramInfoLog(programCompute, logLen, NULL, logString);
+		std::cout << "Error: " << logString << std::endl;
+		delete logString;
+		glDeleteProgram(programCompute);
+		programCompute = 0;
+		exit(-1);
+	}
+
 }
 
 void initObj()
@@ -577,13 +602,9 @@ void initStructure()
 		vels[i].vx = Ranf(-2.0, 2.0);
 		vels[i].vy = Ranf(-2.0, 2.0);
 		vels[i].vz = Ranf(-2.0, 2.0);
-		vels[i].vw = 1;
+		vels[i].vw = 0;
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
-
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posSSBO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, velSSBO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, colSSBO);
 }
 
 GLuint loadShader(const char *fileName, GLenum type)
@@ -737,10 +758,6 @@ void renderFunc()
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, colorBuffTexId); //No está cambiando para nada el estado del shader
 		*/
-		
-		
-
-		
 
 		//Prueba con el quad
 		
@@ -858,18 +875,44 @@ void renderTeapot()
 
 void renderParticles()
 {
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, velSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, colSSBO);
+
 	glUseProgram(programCompute);
+
 	glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+	
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glUseProgram(program);
+	
+	glm::mat4 modelView = view * model;
+	glm::mat4 modelViewProj = proj * view * model;
+	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+	if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
+		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
+			&(modelView[0][0]));
+	if (uModelViewProjMat != -1)
+		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
+			&(modelViewProj[0][0]));
+	if (uNormalMat != -1)
+		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
+			&(normal[0][0]));
+
 	glBindBuffer(GL_ARRAY_BUFFER, posSSBO);
-	glVertexPointer(4, GL_FLOAT, 0, (void *)0);
+	glVertexPointer(4, GL_FLOAT, 0, (void *) 0);
 	glEnableClientState(GL_VERTEX_ARRAY);
+	glPointSize(5.0f);
 	glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+	
+	glutSwapBuffers();
 }
 
 void renderCube()
@@ -996,7 +1039,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 	else if (ppShaderOption == "map" && key == '-') dispFactor -= 0.1f;
 	else if (ppShaderOption != "map" && key == '+') nSub++;
 	else if (ppShaderOption != "map" && key == '-') nSub--;
-	std::cout << dispFactor << std::endl;
+
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 }
 void mouseFunc(int button, int state, int x, int y){}

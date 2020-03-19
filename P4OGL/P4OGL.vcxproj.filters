@@ -91,5 +91,8 @@
     <None Include="..\shaders_P4\pp_map.tcs">
       <Filter>shaders</Filter>
     </None>
+    <None Include="..\shaders_P4\particleSystem.comp">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>

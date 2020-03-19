@@ -29,18 +29,19 @@ vec3 shade();
 void main()
 {
 
-	//Ka = color;
-	//Kd = color;
-	vec3 textureColor = texture(colorTex, texCoord).rgb;
-	Ka = textureColor;
-	Kd = textureColor;
+	Ka = color;
+	Kd = color;
+	//vec3 textureColor = texture(colorTex, texCoord).rgb;
+	//Ka = textureColor;
+	//Kd = textureColor;
 	Ke = vec3(0.0);
 	Ks = vec3 (1.0);
 
 
 	N = normalize (norm);
 	
-	outColor = vec4(shade(), 1.0);   
+	//outColor = vec4(shade(), 1.0);   
+	outColor = vec4(color, 1.0);
 }
 
 vec3 shade()
