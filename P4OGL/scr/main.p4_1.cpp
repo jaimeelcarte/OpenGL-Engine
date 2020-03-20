@@ -19,7 +19,7 @@
 #define RAND_SEED 31415926
 #define SCREEN_SIZE 1280,720
 
-#define NUM_PARTICLES 1024*1024
+#define NUM_PARTICLES 1024
 #define WORK_GROUP_SIZE 128
 
 //////////////////////////////////////////////////////////////
@@ -437,7 +437,7 @@ void initShaderParticle(const char *vname, const char *gname, const char *fname)
 
 	uNormalMat = glGetUniformLocation(program, "normal");
 	uModelViewMat = glGetUniformLocation(program, "modelView");
-	uModelViewProjMat = glGetUniformLocation(program, "modelViewProj");
+	uModelViewProjMat = glGetUniformLocation(program, "proj");
 	uCameraPos = glGetUniformLocation(postProccesProgram, "cameraPos");
 
 	uColorTex = glGetUniformLocation(program, "colorTex");
@@ -647,6 +647,21 @@ void initStructure()
 		vels[i].vy = Ranf(-2.0, 2.0);
 		vels[i].vz = Ranf(-2.0, 2.0);
 		vels[i].vw = 0;
+	}
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+	glGenBuffers(1, &colSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, colSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct vel), NULL, GL_STATIC_DRAW);
+
+	struct color *cols = (struct color *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct color), bufMask);
+	for (int i = 0; i < NUM_PARTICLES; ++i)
+	{
+		//De momento hardcodeo el random de los elementos
+		cols[i].r = Ranf(0.0, 1.0);
+		cols[i].g = Ranf(0.0, 1.0);
+		cols[i].b = Ranf(0.0, 1.0);
+		cols[i].a = Ranf(0.0, 1.0);
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
@@ -944,12 +959,21 @@ void renderParticles()
 			&(modelView[0][0]));
 	if (uModelViewProjMat != -1)
 		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
-			&(modelViewProj[0][0]));
+			&(proj[0][0]));
 	if (uNormalMat != -1)
 		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 			&(normal[0][0]));
-	if (uCameraPos != -1)
-		glUniform3fv(uCameraPos, 1, &(camPos[0]));
+	if (uColorTex != -1)
+	{
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, colorTexId);
+		glUniform1i(uColorTex, 0);
+	}
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendEquation(GL_FUNC_ADD);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	glBindBuffer(GL_ARRAY_BUFFER, posSSBO);
 	glVertexPointer(4, GL_FLOAT, 0, (void *) 0);
@@ -959,6 +983,10 @@ void renderParticles()
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+	glDisable(GL_BLEND);
+
 	glutSwapBuffers();
 	
 }

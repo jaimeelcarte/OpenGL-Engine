@@ -1,21 +1,37 @@
 #version 330 core
 layout (points) in;
-layout (triangle_strip, max_vertices = 6) out;
+layout (triangle_strip, max_vertices = 4) out;
 
-uniform mat4 modelViewProj;
+uniform mat4 proj;
 uniform mat4 modelView;
 uniform mat4 normal;
 uniform vec4 cameraPos;
 
-out fData
-{
-	vec3 color;
-}frag; 
+in vec4 color[];
 
+out vec4 fragColor;
+out vec3 pos;
+out vec3 norm;
 out vec2 texCoord;
 
 void main() {    
+
+	//Pass-through del color
+	fragColor = color[0];
+
 	//Rellenar tanto el gl_position como texcoord
-	gl_Position = gl_in[0].gl_Position;
-	mat4 view = rotate(0.0,0.0,0.0,1.0);
+	gl_Position = proj * (gl_in[0].gl_Position + vec4(-1.0, -1.0, 0.0, 0.0));
+	texCoord = vec2(-1.0, -1.0);
+	EmitVertex();
+	gl_Position = proj * (gl_in[0].gl_Position + vec4(1.0, -1.0, 0.0, 0.0));
+	texCoord = vec2(1.0, -1.0);
+	EmitVertex();
+	gl_Position = proj * (gl_in[0].gl_Position + vec4(-1.0, 1.0, 0.0, 0.0));
+	texCoord = vec2(-1.0, 1.0);
+	EmitVertex();
+	gl_Position = proj * (gl_in[0].gl_Position + vec4(1.0, 1.0, 0.0, 0.0));
+	texCoord = vec2(1.0, 1.0);
+	EmitVertex();
+
+	EndPrimitive();
 } 

@@ -2,7 +2,7 @@
 
 out vec4 outColor;
 
-in vec3 color;
+in vec4 fragColor;
 in vec3 pos;
 in vec3 norm;
 in vec2 texCoord;
@@ -29,8 +29,8 @@ vec3 shade();
 void main()
 {
 
-	Ka = color;
-	Kd = color;
+	//Ka = color;
+	//Kd = color;
 	//vec3 textureColor = texture(colorTex, texCoord).rgb;
 	//Ka = textureColor;
 	//Kd = textureColor;
@@ -41,7 +41,7 @@ void main()
 	N = normalize (norm);
 	
 	//outColor = vec4(shade(), 1.0);   
-	outColor = vec4(color, 1.0);
+	outColor = fragColor;
 }
 
 vec3 shade()
