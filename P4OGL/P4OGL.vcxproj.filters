@@ -7,6 +7,9 @@
     <Filter Include="shaders">
       <UniqueIdentifier>{5733b9ec-8bbc-47f2-ba7e-82b2f9eb2ce9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="shaders\Modulo2">
+      <UniqueIdentifier>{85a1d000-0c07-4f99-b6c3-9c267074e051}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="scr\BOX.h">
@@ -93,6 +96,15 @@
     </None>
     <None Include="..\shaders_P4\particleSystem.comp">
       <Filter>shaders</Filter>
+    </None>
+    <None Include="..\shaders_P4\Modulo2\billboard.geom">
+      <Filter>shaders\Modulo2</Filter>
+    </None>
+    <None Include="..\shaders_P4\Modulo2\billboard.frag">
+      <Filter>shaders\Modulo2</Filter>
+    </None>
+    <None Include="..\shaders_P4\Modulo2\billboard.vert">
+      <Filter>shaders\Modulo2</Filter>
     </None>
   </ItemGroup>
 </Project>

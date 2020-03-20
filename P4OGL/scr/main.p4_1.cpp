@@ -110,6 +110,7 @@ unsigned int triangleVertexVBO;
 
 //Por definir
 unsigned int vshader;
+unsigned int gshader;
 unsigned int fshader;
 unsigned int program;
 
@@ -173,6 +174,7 @@ void renderParticles();
 void initContext(int argc, char** argv);
 void initOGL();
 void initShaderFw(const char *vname, const char *fname);
+void initShaderParticle(const char *vname, const char *gname ,const char *fname);
 void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name, const char *gname, const char *fname);
 void initComputeShader(const char *cname);
 void initObj();
@@ -213,8 +215,9 @@ int main(int argc, char** argv)
 
 	initContext(argc, argv);
 	initOGL();
-	initShaderFw("../shaders_P4/fwRendering.vert", "../shaders_P4/fwRendering.frag");
-	initComputeShader("../shaders_P4/particleSystem.comp");
+	//initShaderFw("../shaders_P4/fwRendering.vert", "../shaders_P4/fwRendering.frag");
+	initShaderParticle("../shaders_P4/Modulo2/billboard.vert", "../shaders_P4/Modulo2/billboard.geom" , "../shaders_P4/Modulo2/billboard.frag");
+	initComputeShader("../shaders_P4/Modulo2/particleSystem.comp");
 
 	if (postProcessing) {
 		if (ppShaderOption == "points")
@@ -240,7 +243,6 @@ int main(int argc, char** argv)
 	for (int i = 0; i < loader.LoadedVertices.size(); ++i)
 	{
 		position.push_back(loader.LoadedVertices[i].Position);
-		//std::cout << position[i].X << ", " << position[i].Y << ", " << position[i].Z << std::endl;
 		normals.push_back(loader.LoadedVertices[i].Normal);
 		texCoords.push_back(loader.LoadedVertices[i].TextureCoordinate);
 	}
@@ -399,6 +401,48 @@ void initShaderFw(const char *vname, const char *fname)
 	inColor = glGetAttribLocation(program, "inColor");
 	inNormal = glGetAttribLocation(program, "inNormal");
 	inTexCoord = glGetAttribLocation(program, "inTexCoord");
+}
+
+void initShaderParticle(const char *vname, const char *gname, const char *fname)
+{
+	vshader = loadShader(vname, GL_VERTEX_SHADER);
+	gshader = loadShader(gname, GL_GEOMETRY_SHADER);
+	fshader = loadShader(fname, GL_FRAGMENT_SHADER);
+
+	program = glCreateProgram();
+	glAttachShader(program, vshader);
+	glAttachShader(program, gshader);
+	glAttachShader(program, fshader);
+
+
+	glLinkProgram(program);
+
+	int linked;
+	glGetProgramiv(program, GL_LINK_STATUS, &linked);
+	if (!linked)
+	{
+		//Calculamos una cadena de error
+		GLint logLen;
+		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLen);
+
+		char *logString = new char[logLen];
+		glGetProgramInfoLog(program, logLen, NULL, logString);
+		std::cout << "Error: " << logString << std::endl;
+		delete[] logString;
+
+		glDeleteProgram(program);
+		program = 0;
+		exit(-1);
+	}
+
+	uNormalMat = glGetUniformLocation(program, "normal");
+	uModelViewMat = glGetUniformLocation(program, "modelView");
+	uModelViewProjMat = glGetUniformLocation(program, "modelViewProj");
+	uCameraPos = glGetUniformLocation(postProccesProgram, "cameraPos");
+
+	uColorTex = glGetUniformLocation(program, "colorTex");
+	uEmiTex = glGetUniformLocation(program, "emiTex");
+
 }
 
 void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name, const char *gname, const char *fname)
@@ -605,6 +649,10 @@ void initStructure()
 		vels[i].vw = 0;
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, velSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, colSSBO);
 }
 
 GLuint loadShader(const char *fileName, GLenum type)
@@ -875,10 +923,6 @@ void renderTeapot()
 
 void renderParticles()
 {
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posSSBO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, velSSBO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, colSSBO);
-
 	glUseProgram(programCompute);
 
 	glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
@@ -894,6 +938,7 @@ void renderParticles()
 	glm::mat4 modelView = view * model;
 	glm::mat4 modelViewProj = proj * view * model;
 	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+	glm::vec4 camPos = model * glm::vec4(cameraPos, 1.0);
 	if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
 		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
 			&(modelView[0][0]));
@@ -903,16 +948,19 @@ void renderParticles()
 	if (uNormalMat != -1)
 		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 			&(normal[0][0]));
+	if (uCameraPos != -1)
+		glUniform3fv(uCameraPos, 1, &(camPos[0]));
 
 	glBindBuffer(GL_ARRAY_BUFFER, posSSBO);
 	glVertexPointer(4, GL_FLOAT, 0, (void *) 0);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glPointSize(5.0f);
+	//glPointSize(5.0f);
 	glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	
 	glutSwapBuffers();
+	
 }
 
 void renderCube()
@@ -1041,6 +1089,7 @@ void keyboardFunc(unsigned char key, int x, int y)
 	else if (ppShaderOption != "map" && key == '-') nSub--;
 
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+
 }
 void mouseFunc(int button, int state, int x, int y){}
 
