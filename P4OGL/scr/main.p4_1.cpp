@@ -535,8 +535,7 @@ void initComputeShader(const char *cname)
 
 	uUsingVerlet = glGetUniformLocation(programCompute, "usingVerlet");
 
-	if (uUsingVerlet != -1)
-		glUniform1i(uUsingVerlet, usingVerlet);
+	
 
 }
 
@@ -1003,6 +1002,9 @@ void renderTeapot()
 void renderParticles()
 {
 	glUseProgram(programCompute);
+
+	if (uUsingVerlet != -1)
+		glUniform1i(uUsingVerlet, usingVerlet);
 
 	glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);

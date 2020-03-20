@@ -89,7 +89,6 @@ void main()
 			}
 		}
 		PrevPositions[gid] = Positions[gid];
-
 		Positions[gid].xyz = pp;
 		Velocities[gid].xyz = vp;
 	}
@@ -110,7 +109,7 @@ void main()
 			pp = p + vp*DT + 0.5*DT*DT*G;
 		}
 	
-
+		
 		Positions[gid].xyz = pp;
 		Velocities[gid].xyz = vp;
 	}
