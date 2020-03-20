@@ -618,6 +618,9 @@ void initTriangle()
 
 void initStructure()
 {
+	float h = NUM_PARTICLES / 4;
+
+
 	glGenBuffers(1, &posSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, posSSBO);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct pos), NULL, GL_STATIC_DRAW);
@@ -627,11 +630,36 @@ void initStructure()
 	struct pos *points = (struct pos *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct pos), bufMask);
 	for (int i = 0; i < NUM_PARTICLES; ++i)
 	{
-		//De momento hardcodeo el random de los elementos
-		points[i].x = Ranf(-5.0, 5.0);
-		points[i].y = Ranf(-5.0, 5.0);
-		points[i].z = Ranf(-5.0, 5.0);
-		points[i].w = 1;
+
+		if (i < h)
+		{
+			points[i].x = 9.0;
+			points[i].y = 10.0;
+			points[i].z = 0.0;
+			points[i].w = 1;
+		}
+		else if (i < (h * 2))
+		{
+			points[i].x = 2.0;
+			points[i].y = 5.0;
+			points[i].z = 3.0;
+			points[i].w = 1;
+		}
+		else if (i < (h * 3))
+		{
+			points[i].x = -15.0;
+			points[i].y = 7.0;
+			points[i].z = -3.0;
+			points[i].w = 1;
+		}
+		else if (i < (h * 4))
+		{
+			points[i].x = -6.0;
+			points[i].y = 6.0;
+			points[i].z = -5.0;
+			points[i].w = 1;
+		}
+		
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
@@ -643,9 +671,10 @@ void initStructure()
 	for (int i = 0; i < NUM_PARTICLES; ++i)
 	{
 		//De momento hardcodeo el random de los elementos
-		vels[i].vx = Ranf(-2.0, 2.0);
-		vels[i].vy = Ranf(-2.0, 2.0);
-		vels[i].vz = Ranf(-2.0, 2.0);
+		float intervalo[] = { -10.0, 10.0 };
+		vels[i].vx = Ranf(intervalo[0], intervalo[1]);
+		vels[i].vy = Ranf(intervalo[0], intervalo[1]);
+		vels[i].vz = Ranf(intervalo[0], intervalo[1]);
 		vels[i].vw = 0;
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
