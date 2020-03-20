@@ -5,6 +5,11 @@ layout (binding=4, std430) buffer Pos
     vec4 vertices[];
 };
 
+layout(std140, binding = 8) buffer Col
+{
+	vec4 colores[];
+};
+
 in vec3 inPos;	
 in vec3 inColor;
 in vec2 inTexCoord;
@@ -24,7 +29,8 @@ out vec2 texCoord;
 
 void main()
 {
-	color = vec3(1.0,1.0,0.0);
+//	color = vec3(1.0,1.0,0.0);
+	color = colores[gl_VertexID].xyz;
 	texCoord = inTexCoord;
 	norm = (normal * vec4(inNormal, 0.0)).xyz;
 	pos = (modelView * vertices[gl_VertexID]).xyz;

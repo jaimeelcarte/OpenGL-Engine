@@ -86,7 +86,9 @@ unsigned int depthBuffTexId;
 
 //SSBO
 unsigned int posSSBO;
+unsigned int initPosSSBO;
 unsigned int velSSBO;
+unsigned int initVelSSBO;
 unsigned int colSSBO;
 
 //VAO
@@ -574,11 +576,11 @@ void initTriangle()
 
 void initStructure()
 {
+	unsigned int bufMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+
 	glGenBuffers(1, &posSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, posSSBO);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct pos), NULL, GL_STATIC_DRAW);
-
-	unsigned int bufMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
 
 	struct pos *points = (struct pos *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct pos), bufMask);
 	for (int i = 0; i < NUM_PARTICLES; ++i)
@@ -588,6 +590,17 @@ void initStructure()
 		points[i].y = Ranf(-5.0, 5.0);
 		points[i].z = Ranf(-5.0, 5.0);
 		points[i].w = 1;
+	}
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+	glGenBuffers(1, &initPosSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, initPosSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct pos), NULL, GL_STATIC_DRAW);
+
+	struct pos *points2 = (struct pos *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct pos), bufMask);
+	for (int i = 0; i < NUM_PARTICLES; ++i)
+	{
+		points2[i] = points[i];
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
@@ -603,6 +616,32 @@ void initStructure()
 		vels[i].vy = Ranf(-2.0, 2.0);
 		vels[i].vz = Ranf(-2.0, 2.0);
 		vels[i].vw = 0;
+	}
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+	glGenBuffers(1, &initVelSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, initVelSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct vel), NULL, GL_STATIC_DRAW);
+
+	struct vel *vels2 = (struct vel *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct vel), bufMask);
+	for (int i = 0; i < NUM_PARTICLES; ++i)
+	{
+		vels2[i] = vels[i];
+	}
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+	glGenBuffers(1, &colSSBO);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, colSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct color), NULL, GL_STATIC_DRAW);
+
+	struct color *cols = (struct color *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct color), bufMask);
+	for (int i = 0; i < NUM_PARTICLES; ++i)
+	{
+		//De momento hardcodeo el random de los elementos
+		cols[i].r = 0.0f;
+		cols[i].g = 1.0f;
+		cols[i].b = 0.0f;
+		cols[i].a = 1.0f; // Tiempo de vida restante
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 }
@@ -876,8 +915,10 @@ void renderTeapot()
 void renderParticles()
 {
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posSSBO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, velSSBO);
-	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, colSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, initPosSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, velSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, initVelSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, colSSBO);
 
 	glUseProgram(programCompute);
 
@@ -907,7 +948,7 @@ void renderParticles()
 	glBindBuffer(GL_ARRAY_BUFFER, posSSBO);
 	glVertexPointer(4, GL_FLOAT, 0, (void *) 0);
 	glEnableClientState(GL_VERTEX_ARRAY);
-	glPointSize(5.0f);
+	glPointSize(3.0f);
 	glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
 	glDisableClientState(GL_VERTEX_ARRAY);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);

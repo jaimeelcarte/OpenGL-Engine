@@ -7,12 +7,22 @@ layout(std140, binding = 4) buffer Pos
 	vec4 Positions[];	// array of structures
 };
 
-layout(std140, binding = 5) buffer Vel
+layout(std140, binding = 5) buffer InitPos
+{
+	vec4 initPositions[];	// array of structures
+};
+
+layout(std140, binding = 6) buffer Vel
 {
 	vec4 Velocities[];	// array of structures
 };
 
-layout(std140, binding = 6) buffer Col
+layout(std140, binding = 7) buffer InitVel
+{
+	vec4 initVelocities[];	// array of structures
+};
+
+layout(std140, binding = 8) buffer Col
 {
 	vec4 Colors[];	// array of structures
 };
@@ -31,6 +41,8 @@ layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
 const vec3 G = vec3(0.0, -9.8, 0.0);
 const float DT = 0.1;
+
+const float LifeTimeFactor = 5.0;
 
 const vec4 SPHERE = vec4(0.0, 0.0, 0.0, 5.0);
 
@@ -54,19 +66,33 @@ bool IsInsideSphere(vec3 p, vec4 s)
 void main()
 {
 	uint gid = gl_GlobalInvocationID.x; // the .y and .z are both 1 in this case
-	vec3 p = Positions[gid].xyz;
-	vec3 v = Velocities[gid].xyz;
+	float lifeTimeLeft = Colors[gid].w - DT / LifeTimeFactor;
 
-	vec3 pp = p + v*DT + 0.5*DT*DT*G;
-	vec3 vp = v + G*DT;
+	if(lifeTimeLeft <= 0.0){
+		Positions[gid] = initPositions[gid];
+		Velocities[gid] = initVelocities[gid];
+		Colors[gid].x = 0.0;
+		Colors[gid].y = 1.0;
+		Colors[gid].w = 1.0;
+	} else {
+		vec3 p = Positions[gid].xyz;
+		vec3 v = Velocities[gid].xyz;
 
-	if (IsInsideSphere(pp, SPHERE))
-	{
-		vp = BounceSphere(p, v, SPHERE);
-		pp = p + vp*DT + 0.5*DT*DT*G;
+		vec3 pp = p + v*DT + 0.5*DT*DT*G;
+		vec3 vp = v + G*DT;
+
+		if (IsInsideSphere(pp, SPHERE))
+		{
+			vp = BounceSphere(p, v, SPHERE);
+			pp = p + vp*DT + 0.5*DT*DT*G;
+		}
+
+		Positions[gid].xyz = pp;
+		Velocities[gid].xyz = vp;
+		Colors[gid].x = 1.0 - lifeTimeLeft;
+		Colors[gid].y = lifeTimeLeft;
+		Colors[gid].w = lifeTimeLeft;
 	}
-
-	Positions[gid].xyz = pp;
-	Velocities[gid].xyz = vp;
+	
 
 }
