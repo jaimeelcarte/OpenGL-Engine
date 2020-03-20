@@ -19,7 +19,7 @@
 #define RAND_SEED 31415926
 #define SCREEN_SIZE 1280,720
 
-#define NUM_PARTICLES 1024*1024
+#define NUM_PARTICLES 1024
 #define WORK_GROUP_SIZE 128
 
 //////////////////////////////////////////////////////////////
@@ -586,9 +586,9 @@ void initStructure()
 	for (int i = 0; i < NUM_PARTICLES; ++i)
 	{
 		//De momento hardcodeo el random de los elementos
-		points[i].x = Ranf(-5.0, 5.0);
-		points[i].y = Ranf(-5.0, 5.0);
-		points[i].z = Ranf(-5.0, 5.0);
+		points[i].x = Ranf(-2.5, 2.5);
+		points[i].y = Ranf(6.0, 8.0);
+		points[i].z = Ranf(-2.5, 2.5);
 		points[i].w = 1;
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
