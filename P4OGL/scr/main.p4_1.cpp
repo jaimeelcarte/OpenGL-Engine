@@ -62,6 +62,9 @@ glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 25.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
+//Opciones integrador shader de computo
+int usingVerlet = 1; //1: true           0: false
+
 //Opciones de post-procesado
 bool postProcessing = true;
 bool isQuad = false;
@@ -86,6 +89,7 @@ unsigned int depthBuffTexId;
 
 //SSBO
 unsigned int posSSBO;
+unsigned int prevPosSSBO;
 unsigned int velSSBO;
 unsigned int colSSBO;
 
@@ -123,6 +127,7 @@ int uModelViewMat;
 int uViewProjMat;
 int uModelViewProjMat;
 int uNormalMat;
+int uUsingVerlet;
 
 //Tessellation 
 int uDispFactor;
@@ -438,11 +443,12 @@ void initShaderParticle(const char *vname, const char *gname, const char *fname)
 	uNormalMat = glGetUniformLocation(program, "normal");
 	uModelViewMat = glGetUniformLocation(program, "modelView");
 	uModelViewProjMat = glGetUniformLocation(program, "proj");
-	uCameraPos = glGetUniformLocation(postProccesProgram, "cameraPos");
 
 	uColorTex = glGetUniformLocation(program, "colorTex");
 	uEmiTex = glGetUniformLocation(program, "emiTex");
 
+
+	
 }
 
 void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name, const char *gname, const char *fname)
@@ -526,6 +532,12 @@ void initComputeShader(const char *cname)
 		exit(-1);
 	}
 
+
+	uUsingVerlet = glGetUniformLocation(programCompute, "usingVerlet");
+
+	if (uUsingVerlet != -1)
+		glUniform1i(uUsingVerlet, usingVerlet);
+
 }
 
 void initObj()
@@ -582,7 +594,7 @@ void initObj()
 
 	model = glm::mat4(1.0f);
 
-	colorTexId = loadTex("../img/mapamundi.jpg");
+	colorTexId = loadTex("../img/pokeball.png");
 	emiTexId = loadTex("../img/emissive.png");
 }
 
@@ -663,6 +675,28 @@ void initStructure()
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
+	if (uUsingVerlet != -1)
+	{
+		glGenBuffers(1, &prevPosSSBO);
+		glBindBuffer(GL_SHADER_STORAGE_BUFFER, prevPosSSBO);
+		glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct pos), NULL, GL_STATIC_DRAW);
+
+		unsigned int bufMask = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT;
+
+		struct pos *pointsPrev = (struct pos *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct pos), bufMask);
+		for (int i = 0; i < NUM_PARTICLES; ++i)
+		{
+			pointsPrev[i].x = 0.0;
+			pointsPrev[i].y = 0.0;
+			pointsPrev[i].z = 0.0;
+			pointsPrev[i].w = 0.0;
+
+		}
+		glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 7, prevPosSSBO);
+	}
+
 	glGenBuffers(1, &velSSBO);
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, velSSBO);
 	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(struct vel), NULL, GL_STATIC_DRAW);
@@ -697,6 +731,7 @@ void initStructure()
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, velSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, colSSBO);
+
 }
 
 GLuint loadShader(const char *fileName, GLenum type)

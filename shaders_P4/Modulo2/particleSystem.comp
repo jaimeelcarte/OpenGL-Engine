@@ -17,6 +17,11 @@ layout(std140, binding = 6) buffer Col
 	vec4 Colors[];	// array of structures
 };
 
+layout(std140, binding = 7) buffer PrevPos
+{
+	vec4 PrevPositions[];	// array of structures
+};
+
 layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
 //	variables existentes:
@@ -28,6 +33,7 @@ layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 //	in uint gl_LocalInvocationIndex   ->   ID representation of the gl_LocalInvocationID
 //                                         (used for indexing into a shared array)
 
+uniform int usingVerlet;
 
 const vec3 G = vec3(0.0, -9.8, 0.0);
 const float DT = 0.01;
@@ -55,25 +61,59 @@ void main()
 {
 	uint gid = gl_GlobalInvocationID.x; // the .y and .z are both 1 in this case
 	vec3 p = Positions[gid].xyz;
+	vec3 prevP = PrevPositions[gid].xyz;
 	vec3 v = Velocities[gid].xyz;
+	
+	vec3 pp;
+	vec3 vp = v;
+	if (usingVerlet == 1)
+	{
+		
+		if (PrevPositions[gid].w == 0)
+		{
+			pp = p + v*DT + 0.5*DT*DT*G;
+			PrevPositions[gid].w = 1;
+			if (pp.y <= -6)
+			{
+				vp = Bounce(v, vec3(0.0, 1.0, 0.0));
+				pp = p + vp*DT + 0.5*DT*DT*G;
+			}
+		}
+		else
+		{
+			pp = (2 * p) - prevP + 0.5*DT*DT*G;
+			if (pp.y <= -6)
+			{
+				vp = Bounce(v, vec3(0.0, 1.0, 0.0));
+				pp = p + vp*DT + 0.5*DT*DT*G;
+			}
+		}
+		PrevPositions[gid] = Positions[gid];
 
-	vec3 pp = p + v*DT + 0.5*DT*DT*G;
-	vec3 vp = v + G*DT;
-	/*
-	if (IsInsideSphere(pp, SPHERE))
-	{
-		vp = BounceSphere(p, v, SPHERE);
-		pp = p + vp*DT + 0.5*DT*DT*G;
+		Positions[gid].xyz = pp;
+		Velocities[gid].xyz = vp;
 	}
-	*/
-	if (pp.y <= -6)
+	else
 	{
-		vp = Bounce(v, vec3(0.0, 1.0, 0.0));
-		pp = p + vp*DT + 0.5*DT*DT*G;
-	}
+		pp = p + v*DT + 0.5*DT*DT*G;
+		vp = v + G*DT;
+		/*
+		if (IsInsideSphere(pp, SPHERE))
+		{
+			vp = BounceSphere(p, v, SPHERE);
+			pp = p + vp*DT + 0.5*DT*DT*G;
+		}
+		*/
+		if (pp.y <= -6)
+		{
+			vp = Bounce(v, vec3(0.0, 1.0, 0.0));
+			pp = p + vp*DT + 0.5*DT*DT*G;
+		}
 	
 
-	Positions[gid].xyz = pp;
-	Velocities[gid].xyz = vp;
+		Positions[gid].xyz = pp;
+		Velocities[gid].xyz = vp;
+	}
+	
 
 }

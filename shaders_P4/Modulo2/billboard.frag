@@ -31,7 +31,7 @@ void main()
 
 	//Ka = color;
 	//Kd = color;
-	vec3 textureColor = texture(colorTex, texCoord).rgb;
+	vec4 textureColor = texture(colorTex, texCoord);
 	//Ka = textureColor;
 	//Kd = textureColor;
 	Ke = vec3(0.0);
@@ -40,8 +40,12 @@ void main()
 
 	N = normalize (norm);
 	
-	//outColor = vec4(shade(), 1.0);   
-	outColor = vec4(textureColor.xyz,fragColor.w);
+	//outColor = vec4(shade(), 1.0); 
+	if (textureColor.w == 0)
+		outColor = vec4(textureColor.xyz,0);
+	else
+		outColor = vec4(textureColor.xyz,fragColor.w);
+	
 }
 
 vec3 shade()
