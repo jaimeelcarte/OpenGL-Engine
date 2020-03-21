@@ -1001,58 +1001,95 @@ void renderTeapot()
 
 void renderParticles()
 {
-	glUseProgram(programCompute);
-
-	if (uUsingVerlet != -1)
-		glUniform1i(uUsingVerlet, usingVerlet);
-
-	glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-	
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glUseProgram(program);
-	
-	glm::mat4 modelView = view * model;
-	glm::mat4 modelViewProj = proj * view * model;
-	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
-	glm::vec4 camPos = model * glm::vec4(cameraPos, 1.0);
-	if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
-		glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
-			&(modelView[0][0]));
-	if (uModelViewProjMat != -1)
-		glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
-			&(proj[0][0]));
-	if (uNormalMat != -1)
-		glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
-			&(normal[0][0]));
-	if (uColorTex != -1)
 	{
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, colorTexId);
-		glUniform1i(uColorTex, 0);
+		// Compute shader time test block
+		GLuint query;
+		GLuint64 elapsed_time;
+		int done = 0;
+		glGenQueries(1, &query);
+		glBeginQuery(GL_TIME_ELAPSED, query);
+
+		glUseProgram(programCompute);
+
+		if (uUsingVerlet != -1)
+			glUniform1i(uUsingVerlet, usingVerlet);
+
+		glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+		// Testing time elapsed
+		glEndQuery(GL_TIME_ELAPSED);
+		while (!done) {
+			glGetQueryObjectiv(query,
+				GL_QUERY_RESULT_AVAILABLE,
+				&done);
+		}
+		glGetQueryObjectui64v(query, GL_QUERY_RESULT, &elapsed_time);
+		printf("Shader de computo: %f ms\n", elapsed_time / 1000000.0);
 	}
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendEquation(GL_FUNC_ADD);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	{
+		// Render time test block
+		GLuint query;
+		GLuint64 elapsed_time;
+		int done = 0;
+		glGenQueries(1, &query);
+		glBeginQuery(GL_TIME_ELAPSED, query);
 
-	glBindBuffer(GL_ARRAY_BUFFER, posSSBO);
-	glVertexPointer(4, GL_FLOAT, 0, (void *) 0);
-	glEnableClientState(GL_VERTEX_ARRAY);
-	//glPointSize(5.0f);
-	glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
-	glDisableClientState(GL_VERTEX_ARRAY);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
-	glDisable(GL_BLEND);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		glUseProgram(program);
+
+		glm::mat4 modelView = view * model;
+		glm::mat4 modelViewProj = proj * view * model;
+		glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+		glm::vec4 camPos = model * glm::vec4(cameraPos, 1.0);
+		if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
+			glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
+				&(modelView[0][0]));
+		if (uModelViewProjMat != -1)
+			glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
+				&(proj[0][0]));
+		if (uNormalMat != -1)
+			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
+				&(normal[0][0]));
+		if (uColorTex != -1)
+		{
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, colorTexId);
+			glUniform1i(uColorTex, 0);
+		}
+		glDisable(GL_CULL_FACE);
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_BLEND);
+		glBlendEquation(GL_FUNC_ADD);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		glBindBuffer(GL_ARRAY_BUFFER, posSSBO);
+		glVertexPointer(4, GL_FLOAT, 0, (void *)0);
+		glEnableClientState(GL_VERTEX_ARRAY);
+		//glPointSize(5.0f);
+		glDrawArrays(GL_POINTS, 0, NUM_PARTICLES);
+		glDisableClientState(GL_VERTEX_ARRAY);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+		glEnable(GL_CULL_FACE);
+		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
+
+		// Testing time elapsed
+		glEndQuery(GL_TIME_ELAPSED);
+		while (!done) {
+			glGetQueryObjectiv(query,
+				GL_QUERY_RESULT_AVAILABLE,
+				&done);
+		}
+		glGetQueryObjectui64v(query, GL_QUERY_RESULT, &elapsed_time);
+		printf("Shaders de vertices, geometria y fragmentos: %f ms\n", elapsed_time / 1000000.0);
+
+	}
 	glutSwapBuffers();
 	
 }
