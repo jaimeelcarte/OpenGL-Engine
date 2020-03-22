@@ -36,6 +36,7 @@ layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 uniform int usingVerlet;
 
 const vec3 G = vec3(0.0, -9.8, 0.0);
+vec3 A = vec3(0.0);
 const float DT = 0.01;
 
 const vec4 SPHERE = vec4(0.0, 0.0, 0.0, 5.0);
@@ -64,6 +65,9 @@ void main()
 	vec3 prevP = PrevPositions[gid].xyz;
 	vec3 v = Velocities[gid].xyz;
 	
+	//vec3 f = normalize(A-p) + G;
+	vec3 f = G;
+
 	vec3 pp;
 	vec3 vp = v;
 	if (usingVerlet == 1)
@@ -71,21 +75,21 @@ void main()
 		
 		if (PrevPositions[gid].w == 0)
 		{
-			pp = p + v*DT + 0.5*DT*DT*G;
+			pp = p + v*DT + 0.5*DT*DT*f;
 			PrevPositions[gid].w = 1;
 			if (pp.y <= -6)
 			{
 				vp = Bounce(v, vec3(0.0, 1.0, 0.0));
-				pp = p + vp*DT + 0.5*DT*DT*G;
+				pp = p + vp*DT + 0.5*DT*DT*f;
 			}
 		}
 		else
 		{
-			pp = (2 * p) - prevP + 0.5*DT*DT*G;
+			pp = (2 * p) - prevP + 0.5*DT*DT*f;
 			if (pp.y <= -6)
 			{
 				vp = Bounce(v, vec3(0.0, 1.0, 0.0));
-				pp = p + vp*DT + 0.5*DT*DT*G;
+				pp = p + vp*DT + 0.5*DT*DT*f;
 			}
 		}
 		PrevPositions[gid] = Positions[gid];

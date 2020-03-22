@@ -23,16 +23,16 @@ void main() {
 	float escala = 0.1;
 
 	texCoord = vec2(0.0, 0.0);
-	gl_Position = proj * (gl_in[0].gl_Position + vec4(texCoord, 0.0, 0.0));
+	gl_Position = proj * (gl_in[0].gl_Position + vec4(-1.0, -1.0, 0.0, 0.0) * escala);
 	EmitVertex();
 	texCoord = vec2(1.0, 0.0);
-	gl_Position = proj * (gl_in[0].gl_Position + vec4(texCoord, 0.0, 0.0));
+	gl_Position = proj * (gl_in[0].gl_Position + vec4(1.0, -1.0, 0.0, 0.0) * escala);
 	EmitVertex();
 	texCoord = vec2(0.0, 1.0);
-	gl_Position = proj * (gl_in[0].gl_Position + vec4(texCoord, 0.0, 0.0));
+	gl_Position = proj * (gl_in[0].gl_Position + vec4(-1.0, 1.0, 0.0, 0.0) * escala);
 	EmitVertex();
 	texCoord = vec2(1.0, 1.0);
-	gl_Position = proj * (gl_in[0].gl_Position + vec4(texCoord, 0.0, 0.0));
+	gl_Position = proj * (gl_in[0].gl_Position + vec4(1.0, 1.0, 0.0, 0.0) * escala);
 	EmitVertex();
 
 	EndPrimitive();

@@ -26,6 +26,7 @@
     <None Include="..\shaders_P4\Modulo2\billboard.frag" />
     <None Include="..\shaders_P4\Modulo2\billboard.geom" />
     <None Include="..\shaders_P4\Modulo2\billboard.vert" />
+    <None Include="..\shaders_P4\Modulo2\ordenacion.comp" />
     <None Include="..\shaders_P4\Modulo2\particleSystem.comp" />
     <None Include="..\shaders_P4\pp_map.frag" />
     <None Include="..\shaders_P4\pp_map.tcs" />

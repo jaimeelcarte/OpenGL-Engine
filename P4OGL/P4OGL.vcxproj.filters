@@ -106,5 +106,8 @@
     <None Include="..\shaders_P4\Modulo2\particleSystem.comp">
       <Filter>shaders\Modulo2</Filter>
     </None>
+    <None Include="..\shaders_P4\Modulo2\ordenacion.comp">
+      <Filter>shaders\Modulo2</Filter>
+    </None>
   </ItemGroup>
 </Project>

@@ -18,8 +18,8 @@
 
 #define RAND_SEED 31415926
 #define SCREEN_SIZE 1280,720
-
-#define NUM_PARTICLES 1024
+	
+#define NUM_PARTICLES 1024*1024
 #define WORK_GROUP_SIZE 128
 
 //////////////////////////////////////////////////////////////
@@ -92,6 +92,7 @@ unsigned int posSSBO;
 unsigned int prevPosSSBO;
 unsigned int velSSBO;
 unsigned int colSSBO;
+unsigned int rankSSBO;
 
 //VAO
 unsigned int vao;
@@ -120,7 +121,8 @@ unsigned int program;
 
 unsigned int cshader;
 unsigned int programCompute;
-
+unsigned int orderShader;
+unsigned int programOrderCompute;
 //Variables Uniform 
 int uModelMat;
 int uModelViewMat;
@@ -128,6 +130,7 @@ int uViewProjMat;
 int uModelViewProjMat;
 int uNormalMat;
 int uUsingVerlet;
+int uMVPCompute;
 
 //Tessellation 
 int uDispFactor;
@@ -181,7 +184,7 @@ void initOGL();
 void initShaderFw(const char *vname, const char *fname);
 void initShaderParticle(const char *vname, const char *gname ,const char *fname);
 void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name, const char *gname, const char *fname);
-void initComputeShader(const char *cname);
+void initComputeShader(const char *cname, unsigned int &cshader, unsigned int &programCompute);
 void initObj();
 
 void initPlane();
@@ -222,7 +225,8 @@ int main(int argc, char** argv)
 	initOGL();
 	//initShaderFw("../shaders_P4/fwRendering.vert", "../shaders_P4/fwRendering.frag");
 	initShaderParticle("../shaders_P4/Modulo2/billboard.vert", "../shaders_P4/Modulo2/billboard.geom" , "../shaders_P4/Modulo2/billboard.frag");
-	initComputeShader("../shaders_P4/Modulo2/particleSystem.comp");
+	initComputeShader("../shaders_P4/Modulo2/particleSystem.comp", orderShader, programOrderCompute);
+	initComputeShader("../shaders_P4/Modulo2/particleSystem.comp", cshader, programCompute);
 
 	if (postProcessing) {
 		if (ppShaderOption == "points")
@@ -508,11 +512,12 @@ void initShaderPP(const char *vname, const char *tcs_name, const char *tes_name,
 		glUniform1i(uColorTexPP, 0);
 }
 
-void initComputeShader(const char *cname)
+void initComputeShader(const char *cname, unsigned int &cshader, unsigned int &programCompute)
 {
 	cshader = loadShader(cname, GL_COMPUTE_SHADER);
 
 	programCompute = glCreateProgram();
+
 	glAttachShader(programCompute, cshader);
 	glLinkProgram(programCompute);
 
@@ -534,7 +539,7 @@ void initComputeShader(const char *cname)
 
 
 	uUsingVerlet = glGetUniformLocation(programCompute, "usingVerlet");
-
+	uMVPCompute = glGetUniformLocation(programCompute, "modelViewProj");
 	
 
 }
@@ -641,7 +646,7 @@ void initStructure()
 	struct pos *points = (struct pos *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct pos), bufMask);
 	for (int i = 0; i < NUM_PARTICLES; ++i)
 	{
-
+		
 		if (i < h)
 		{
 			points[i].x = 9.0;
@@ -665,6 +670,7 @@ void initStructure()
 		}
 		else if (i < (h * 4))
 		{
+			//Meter posicion del raton
 			points[i].x = -6.0;
 			points[i].y = 6.0;
 			points[i].z = -5.0;
@@ -703,12 +709,19 @@ void initStructure()
 	struct vel *vels = (struct vel *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(struct vel), bufMask);
 	for (int i = 0; i < NUM_PARTICLES; ++i)
 	{
+		//Muestreo en una esfera para imitar explosion
+		float samplex, sampley;
+		samplex = Ranf(-5.0, 5.0);
+		sampley = Ranf(-5.0, 5.0);
+		float theta = acos(1 - (2 * samplex));
+		float phi = 2 * 3.14 * sampley;
+
 		//De momento hardcodeo el random de los elementos
-		float intervalo[] = { -10.0, 10.0 };
-		vels[i].vx = Ranf(intervalo[0], intervalo[1]);
-		vels[i].vy = Ranf(intervalo[0], intervalo[1]);
-		vels[i].vz = Ranf(intervalo[0], intervalo[1]);
+		vels[i].vx = sin(theta) * cos(phi) * 10;
+		vels[i].vy = sin(theta) * sin(phi) * 10;
+		vels[i].vz = cos(theta) * 10;
 		vels[i].vw = 0;
+
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
@@ -725,6 +738,17 @@ void initStructure()
 		cols[i].b = Ranf(0.0, 1.0);
 		cols[i].a = Ranf(0.0, 1.0);
 	}
+	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+	//Subimos un SSBO auxiliar para el algoritmo de ordenacion por ranking
+	glGenBuffers(1, &rankSSBO);
+	glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 8, rankSSBO);
+	glBufferData(GL_ATOMIC_COUNTER_BUFFER, NUM_PARTICLES * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
+
+	GLuint *zero = (GLuint *) glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, NUM_PARTICLES * sizeof(GLuint), bufMask);
+	glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, NUM_PARTICLES * sizeof(GLuint), &zero);
+	
+
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posSSBO);
@@ -1001,6 +1025,9 @@ void renderTeapot()
 
 void renderParticles()
 {
+	glm::mat4 modelView = view * model;
+	glm::mat4 modelViewProj = proj * view * model;
+	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
 	{
 		// Compute shader time test block
 		GLuint query;
@@ -1009,8 +1036,16 @@ void renderParticles()
 		glGenQueries(1, &query);
 		glBeginQuery(GL_TIME_ELAPSED, query);
 
-		glUseProgram(programCompute);
+		//--------------------Computo ordenacion----------------------
+		glUseProgram(programOrderCompute);
+		if (uMVPCompute != -1)
+			glUniformMatrix4fv(uMVPCompute, 1, GL_FALSE,
+				&(modelViewProj[0][0]));
+		glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
+		//---------------Computo fisica de particulas-----------------
+		glUseProgram(programCompute);
 		if (uUsingVerlet != -1)
 			glUniform1i(uUsingVerlet, usingVerlet);
 
@@ -1034,6 +1069,8 @@ void renderParticles()
 		int done = 0;
 		glGenQueries(1, &query);
 		glBeginQuery(GL_TIME_ELAPSED, query);
+		//--------------------------------
+
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glEnable(GL_CULL_FACE);
@@ -1042,16 +1079,13 @@ void renderParticles()
 
 		glUseProgram(program);
 
-		glm::mat4 modelView = view * model;
-		glm::mat4 modelViewProj = proj * view * model;
-		glm::mat4 normal = glm::transpose(glm::inverse(modelView));
-		glm::vec4 camPos = model * glm::vec4(cameraPos, 1.0);
+		
 		if (uModelViewMat != -1) //Si está utilizando dicha matriz, la subo a los shaders activados en el programa
 			glUniformMatrix4fv(uModelViewMat, 1, GL_FALSE,
 				&(modelView[0][0]));
 		if (uModelViewProjMat != -1)
 			glUniformMatrix4fv(uModelViewProjMat, 1, GL_FALSE,
-				&(proj[0][0]));
+				&(proj[0][0])); //Solo necesito subir la matriz proj y no la modelViewProj para los billboard
 		if (uNormalMat != -1)
 			glUniformMatrix4fv(uNormalMat, 1, GL_FALSE,
 				&(normal[0][0]));
@@ -1222,7 +1256,10 @@ void keyboardFunc(unsigned char key, int x, int y)
 	view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
 }
-void mouseFunc(int button, int state, int x, int y){}
+void mouseFunc(int button, int state, int x, int y)
+{
+	
+}
 
 //Metodo auxiliar para generar un float aleatorio
 float Ranf(float Min, float Max)
