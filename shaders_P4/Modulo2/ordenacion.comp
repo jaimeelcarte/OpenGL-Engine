@@ -34,43 +34,40 @@ uniform int numParticles;
 
 void main()
 {
-	uint gid = gl_GlobalInvocationID.x; // the .y and .z are both 1 in this case
-	//float pGid = distance(cameraPos, Positions[numParticles-1].xyz);
 	float pI;
 	float pJ;
-	if (gid != 0)
+	
+	for (int i = 1; i < numParticles; ++i)
 	{
-		for (int i = 1; i < numParticles; ++i)
-		{
-			pI = distance(cameraPos, Positions[i].xyz);
-			for (int j = 0; j < i; j++){
-				pJ = distance(cameraPos, Positions[j].xyz);
-				if (pI <= pJ) 
-					Ranks[j] += 1;
-				else 
-					Ranks[i] += 1;
-			}	
-		}
-
-		vec4[] AuxPos;
-		vec4[] AuxPrevPos;
-		vec4[] AuxVel;
-		vec4[] AuxColors;
-
-		for (int i = 0; i < gid; i++){
-			AuxPos[Ranks[i]] = Positions[i];
-			AuxPrevPos[Ranks[i]] = PrevPositions[i];
-			AuxVel[Ranks[i]] = Velocities[i];
-			AuxColors[Ranks[i]] = Colors[i];
-		}
-		for (int i = 0; i < gid; i++){
-			Positions[i] = AuxPos[i];
-			PrevPositions[i] = AuxPrevPos[i];
-			Velocities[i] = AuxVel[i];
-			Colors[i] = AuxColors[i];
-		}
-
+		pI = distance(cameraPos, Positions[i].xyz);
+		for (int j = 0; j < i; j++){
+			pJ = distance(cameraPos, Positions[j].xyz);
+			if (pI <= pJ) 
+				Ranks[j] += 1;
+			else 
+				Ranks[i] += 1;
+		}	
 	}
+
+	vec4[] AuxPos;
+	vec4[] AuxPrevPos;
+	vec4[] AuxVel;
+	vec4[] AuxColors;
+
+	for (int i = 0; i < numParticles; i++){
+		AuxPos[Ranks[i]] = Positions[i];
+		AuxPrevPos[Ranks[i]] = PrevPositions[i];
+		AuxVel[Ranks[i]] = Velocities[i];
+		AuxColors[Ranks[i]] = Colors[i];
+	}
+	for (int i = 0; i < numParticles; i++){
+		Positions[i] = AuxPos[i];
+		PrevPositions[i] = AuxPrevPos[i];
+		Velocities[i] = AuxVel[i];
+		Colors[i] = AuxColors[i];
+	}
+
+	
 
 	memoryBarrierShared();
 
