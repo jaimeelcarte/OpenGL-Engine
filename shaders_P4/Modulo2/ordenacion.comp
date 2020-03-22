@@ -7,25 +7,71 @@ layout(std140, binding = 4) buffer Pos
 	vec4 Positions[];	// array of structures
 };
 
-layout(std140, binding = 8) buffer { atomic_uint Ranks[] };
+layout(std140, binding = 5) buffer Vel
+{
+	vec4 Velocities[];	// array of structures
+};
+
+layout(std140, binding = 6) buffer Col
+{
+	vec4 Colors[];	// array of structures
+};
+
+layout(std140, binding = 7) buffer PrevPos
+{
+	vec4 PrevPositions[];	// array of structures
+};
+
+layout(std140, binding = 8) buffer Rank
+{ 
+	uint Ranks[];
+};
 
 layout (local_size_x = 128, local_size_y = 1, local_size_z = 1) in;
 
+uniform vec3 cameraPos;
+uniform int numParticles;
 
 void main()
 {
 	uint gid = gl_GlobalInvocationID.x; // the .y and .z are both 1 in this case
-	vec3 pGid = Positions[gid].xyz;
-	vec3 pI;
+	//float pGid = distance(cameraPos, Positions[numParticles-1].xyz);
+	float pI;
+	float pJ;
 	if (gid != 0)
 	{
-		for (int i = 0; i < gid; ++i)
+		for (int i = 1; i < numParticles; ++i)
 		{
-			pI = Positions[i].xyz;
-
-			if (pI.z < pGid.z) atomicCounterIncrement(Ranks[gid]);
-			else atomicCounterIncrement(Ranks[i]);
+			pI = distance(cameraPos, Positions[i].xyz);
+			for (int j = 0; j < i; j++){
+				pJ = distance(cameraPos, Positions[j].xyz);
+				if (pI <= pJ) 
+					Ranks[j] += 1;
+				else 
+					Ranks[i] += 1;
+			}	
 		}
+
+		vec4[] AuxPos;
+		vec4[] AuxPrevPos;
+		vec4[] AuxVel;
+		vec4[] AuxColors;
+
+		for (int i = 0; i < gid; i++){
+			AuxPos[Ranks[i]] = Positions[i];
+			AuxPrevPos[Ranks[i]] = PrevPositions[i];
+			AuxVel[Ranks[i]] = Velocities[i];
+			AuxColors[Ranks[i]] = Colors[i];
+		}
+		for (int i = 0; i < gid; i++){
+			Positions[i] = AuxPos[i];
+			PrevPositions[i] = AuxPrevPos[i];
+			Velocities[i] = AuxVel[i];
+			Colors[i] = AuxColors[i];
+		}
+
 	}
+
+	memoryBarrierShared();
 
 }

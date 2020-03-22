@@ -19,7 +19,7 @@
 #define RAND_SEED 31415926
 #define SCREEN_SIZE 1280,720
 	
-#define NUM_PARTICLES 1024*1024
+#define NUM_PARTICLES 1024*10
 #define WORK_GROUP_SIZE 128
 
 //////////////////////////////////////////////////////////////
@@ -64,6 +64,7 @@ glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 
 //Opciones integrador shader de computo
 int usingVerlet = 1; //1: true           0: false
+int numParticles = NUM_PARTICLES;
 
 //Opciones de post-procesado
 bool postProcessing = true;
@@ -131,6 +132,7 @@ int uModelViewProjMat;
 int uNormalMat;
 int uUsingVerlet;
 int uMVPCompute;
+int uNumParticles;
 
 //Tessellation 
 int uDispFactor;
@@ -311,7 +313,7 @@ void initContext(int argc, char** argv)
 void initOGL()
 {
 	glEnable(GL_DEPTH_TEST);
-	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
 	glFrontFace(GL_CCW);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -540,6 +542,7 @@ void initComputeShader(const char *cname, unsigned int &cshader, unsigned int &p
 
 	uUsingVerlet = glGetUniformLocation(programCompute, "usingVerlet");
 	uMVPCompute = glGetUniformLocation(programCompute, "modelViewProj");
+	uNumParticles = glGetUniformLocation(programCompute, "numParticles");
 	
 
 }
@@ -736,24 +739,24 @@ void initStructure()
 		cols[i].r = Ranf(0.0, 1.0);
 		cols[i].g = Ranf(0.0, 1.0);
 		cols[i].b = Ranf(0.0, 1.0);
-		cols[i].a = Ranf(0.0, 1.0);
+		cols[i].a = 1.0;
 	}
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
 	//Subimos un SSBO auxiliar para el algoritmo de ordenacion por ranking
 	glGenBuffers(1, &rankSSBO);
-	glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 8, rankSSBO);
-	glBufferData(GL_ATOMIC_COUNTER_BUFFER, NUM_PARTICLES * sizeof(GLuint), NULL, GL_DYNAMIC_DRAW);
-
-	GLuint *zero = (GLuint *) glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, NUM_PARTICLES * sizeof(GLuint), bufMask);
-	glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 0, NUM_PARTICLES * sizeof(GLuint), &zero);
-	
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, rankSSBO);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, NUM_PARTICLES * sizeof(GLuint), NULL, GL_STATIC_DRAW);
+	GLuint *zero = (GLuint *) glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, NUM_PARTICLES * sizeof(GLuint), bufMask);
+	for (int i = 0; i < NUM_PARTICLES; ++i)
+		zero[i] = 0;
 
 	glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, posSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 5, velSSBO);
 	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 6, colSSBO);
+	glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 8, rankSSBO);
 
 }
 
@@ -1028,6 +1031,7 @@ void renderParticles()
 	glm::mat4 modelView = view * model;
 	glm::mat4 modelViewProj = proj * view * model;
 	glm::mat4 normal = glm::transpose(glm::inverse(modelView));
+	glm::vec4 camPos = glm::vec4(cameraPos, 1.0);
 	{
 		// Compute shader time test block
 		GLuint query;
@@ -1041,6 +1045,11 @@ void renderParticles()
 		if (uMVPCompute != -1)
 			glUniformMatrix4fv(uMVPCompute, 1, GL_FALSE,
 				&(modelViewProj[0][0]));
+		if (uCameraPos != -1)
+			glUniform3fv(uCameraPos, 1, &(camPos[0]));
+		if (uNumParticles != -1)
+			glUniform1i(uNumParticles, numParticles);
+
 		glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -1049,7 +1058,7 @@ void renderParticles()
 		if (uUsingVerlet != -1)
 			glUniform1i(uUsingVerlet, usingVerlet);
 
-		glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
+		//glDispatchCompute(NUM_PARTICLES / WORK_GROUP_SIZE, 1, 1);
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
 		// Testing time elapsed

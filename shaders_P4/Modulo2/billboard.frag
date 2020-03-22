@@ -31,7 +31,8 @@ void main()
 
 	//Ka = color;
 	//Kd = color;
-	vec4 textureColor = texture(colorTex, texCoord);
+//	vec4 textureColor = texture(colorTex, texCoord);
+	vec4 textureColor = fragColor;
 	//Ka = textureColor;
 	//Kd = textureColor;
 	Ke = vec3(0.0);
